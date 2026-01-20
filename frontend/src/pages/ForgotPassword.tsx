@@ -19,6 +19,7 @@ export const ForgotPassword: React.FC = () => {
     setLoading(true);
 
     try {
+      console.log("Sending forgot password request to:", `${API_BASE}/auth/forgot-password`);
       const response = await fetch(`${API_BASE}/auth/forgot-password`, {
         method: "POST",
         headers: {
@@ -34,13 +35,9 @@ export const ForgotPassword: React.FC = () => {
 
       setSubmitted(true);
     } catch (err) {
-      if (err instanceof TypeError && err.message.includes("fetch")) {
-        setError(
-          "Cannot connect to server. Please ensure the backend is running on http://localhost:5000",
-        );
-      } else {
-        setError(err instanceof Error ? err.message : "An error occurred");
-      }
+      const errorMsg = err instanceof Error ? err.message : "An error occurred";
+      console.error("Forgot password error:", { errorMsg, API_BASE, fullError: err });
+      setError(`Failed: ${errorMsg}\n\nAPI URL: ${API_BASE}/auth/forgot-password`);
     } finally {
       setLoading(false);
     }
@@ -113,7 +110,7 @@ export const ForgotPassword: React.FC = () => {
           ) : (
             <>
               {error && (
-                <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">
+                <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm whitespace-pre-wrap font-mono">
                   {error}
                 </div>
               )}
