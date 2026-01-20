@@ -1,53 +1,75 @@
 import pg from 'pg';
 import dns from 'dns';
+import { promisify } from 'util';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
 const { Pool } = pg;
+const dnsLookup = promisify(dns.lookup);
 
-// Resolve DB host to IPv4 to avoid ENETUNREACH on platforms without IPv6 routing
-let resolvedDbHost = process.env.DB_HOST;
-try {
-  const ipv4 = await dns.promises.resolve4(process.env.DB_HOST);
-  if (ipv4?.length) {
-    resolvedDbHost = ipv4[0];
+let pool;
+let poolInitialized = false;
+
+// Initialize pool with proper IPv4 resolution
+async function initializePool() {
+  if (poolInitialized) return;
+  
+  let resolvedDbHost = process.env.DB_HOST;
+  
+  // Try to resolve to IPv4
+  try {
+    const address = await dnsLookup(process.env.DB_HOST, { family: 4 });
+    resolvedDbHost = address.address;
     console.log(`✓ DB host resolved to IPv4: ${resolvedDbHost}`);
+  } catch (err) {
+    console.warn(`⚠ DNS resolution failed, using hostname: ${err.message}`);
   }
-} catch (err) {
-  console.warn(`⚠ Could not resolve DB_HOST ${process.env.DB_HOST} to IPv4: ${err.message}`);
+
+  pool = new Pool({
+    host: resolvedDbHost,
+    port: process.env.DB_PORT || 5432,
+    database: process.env.DB_NAME,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+    // Force IPv4 only
+    lookup: (hostname, options, callback) => {
+      dns.lookup(hostname, { family: 4 }, callback);
+    },
+    max: 20,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000,
+    statement_timeout: 10000,
+    query_timeout: 10000,
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 10000,
+  });
+
+  // Handle pool errors gracefully
+  pool.on('error', (err, client) => {
+    console.error('Unexpected error on idle client:', err.message);
+  });
+  
+  poolInitialized = true;
 }
 
-// Create a reusable database connection pool
-const pool = new Pool({
-  host: resolvedDbHost,
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
-  // Force IPv4 lookups to avoid IPv6 connectivity issues on some hosts
-  lookup: (hostname, options, callback) => {
-    dns.lookup(hostname, { family: 4, hints: dns.ADDRCONFIG }, callback);
-  },
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000, // Increased to 10 seconds
-  statement_timeout: 10000,
-  query_timeout: 10000,
-  keepAlive: true, // Enable TCP keep-alive
-  keepAliveInitialDelayMillis: 10000, // Wait 10s before sending first keep-alive packet
-});
+// Initialize pool immediately
+await initializePool();
 
-// Handle pool errors gracefully
-pool.on('error', (err, client) => {
-  console.error('Unexpected error on idle client:', err.message);
-  // Don't exit process on connection errors, just log them
-});
+// Export pool getter that ensures initialization
+function getPool() {
+  if (!pool || !poolInitialized) {
+    throw new Error('Database pool not initialized');
+  }
+  return pool;
+}
+
 
 // Test database connection
 export const testConnection = async () => {
   try {
+    const pool = getPool();
     const client = await pool.connect();
     const result = await client.query('SELECT NOW()');
     client.release();
@@ -61,6 +83,7 @@ export const testConnection = async () => {
 
 // Ensure critical columns exist (idempotent) to avoid runtime errors
 export const ensureSchema = async () => {
+  const pool = getPool();
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -157,6 +180,7 @@ export const ensureSchema = async () => {
 
 // Query helper function with error handling and retry logic
 export const query = async (text, params, retries = 2) => {
+  const pool = getPool();
   const start = Date.now();
   let lastError;
   
@@ -194,6 +218,7 @@ export const query = async (text, params, retries = 2) => {
 // Get a client from the pool for transactions
 export const getClient = async () => {
   try {
+    const pool = getPool();
     const client = await pool.connect();
     return client;
   } catch (error) {
@@ -205,6 +230,7 @@ export const getClient = async () => {
 // Check if the database connection is healthy
 export const isHealthy = async () => {
   try {
+    const pool = getPool();
     const client = await pool.connect();
     await client.query('SELECT 1');
     client.release();
@@ -218,12 +244,14 @@ export const isHealthy = async () => {
 // Graceful shutdown
 export const closePool = async () => {
   try {
-    await pool.end();
-    console.log('Database pool has ended');
+    if (pool) {
+      await pool.end();
+      console.log('Database pool has ended');
+    }
   } catch (error) {
     console.error('Error closing database pool:', error);
     throw error;
   }
 };
 
-export default pool;
+export default pool || {};
