@@ -66,19 +66,10 @@ export const ResetPassword: React.FC = () => {
       if (!response.ok) {
         throw new Error(data.error || "Failed to reset password");
       }
-
-      setSuccess(true);
-      setTimeout(() => {
-        navigate("/login");
-      }, 3000);
     } catch (err) {
-      if (err instanceof TypeError && err.message.includes("fetch")) {
-        setError(
-          "Cannot connect to server. Please ensure the backend is running on http://localhost:5000",
-        );
-      } else {
-        setError(err instanceof Error ? err.message : "An error occurred");
-      }
+      const errorMsg = err instanceof Error ? err.message : "An error occurred";
+      console.error("Reset password error:", { errorMsg, API_BASE, fullError: err });
+      setError(`Failed: ${errorMsg}\n\nAPI URL: ${API_BASE}/auth/reset-password`);
     } finally {
       setLoading(false);
     }
@@ -173,7 +164,7 @@ export const ResetPassword: React.FC = () => {
           ) : (
             <>
               {error && (
-                <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">
+                <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm whitespace-pre-wrap font-mono">
                   {error}
                 </div>
               )}
