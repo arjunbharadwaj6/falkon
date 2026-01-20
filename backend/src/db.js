@@ -1,22 +1,21 @@
 import pg from 'pg';
 import dns from 'dns';
-import os from 'os';
 import { promisify } from 'util';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-// CRITICAL: Disable IPv6 at the DNS level to prevent ENETUNREACH errors on platforms without IPv6 routing
+// CRITICAL: Force IPv4-only at DNS level
 dns.setDefaultResultOrder('ipv4first');
 
 const { Pool } = pg;
-const dnsLookup = promisify(dns.lookup);
+const resolve4 = promisify(dns.resolve4);
 
 let pool;
 let poolInitialized = false;
 let initializationError = null;
 
-// Initialize pool with guaranteed IPv4-only connections
+// Initialize pool with GUARANTEED IPv4-only connections
 async function initializePool() {
   if (poolInitialized) return;
   if (initializationError) throw initializationError;
@@ -28,6 +27,102 @@ async function initializePool() {
     const dbPassword = process.env.DB_PASSWORD;
     const dbName = process.env.DB_NAME;
     const dbSsl = process.env.DB_SSL === 'true';
+
+    console.log(`🔗 Connecting to PostgreSQL: ${dbUser}@${dbHost}:${dbPort}/${dbName}`);
+
+    let resolvedDbHost = dbHost;
+    
+    // CRITICAL: Resolve to IPv4 ONLY - reject IPv6 entirely
+    try {
+      // Use resolve4 which only returns IPv4 addresses
+      const ipv4Addresses = await resolve4(dbHost);
+      if (ipv4Addresses && ipv4Addresses.length > 0) {
+        resolvedDbHost = ipv4Addresses[0];
+        console.log(`✓ Resolved ${dbHost} to IPv4: ${resolvedDbHost}`);
+      }
+    } catch (dnsErr) {
+      console.warn(`⚠ Could not resolve ${dbHost} to IPv4: ${dnsErr.message}`);
+      console.warn(`  This likely means DNS is returning IPv6, which Render does not support.`);
+      console.warn(`  Solution: Contact Supabase support or use the IPv4 address directly.`);
+      
+      // Check if dbHost is already an IP
+      if (/^\d+\.\d+\.\d+\.\d+$/.test(dbHost)) {
+        console.log(`  Using provided IPv4 address: ${dbHost}`);
+        resolvedDbHost = dbHost;
+      } else {
+        throw new Error(`Failed to resolve ${dbHost} to IPv4 address. Render requires IPv4 connectivity.`);
+      }
+    }
+
+    pool = new Pool({
+      host: resolvedDbHost,
+      port: dbPort,
+      database: dbName,
+      user: dbUser,
+      password: dbPassword,
+      ssl: dbSsl ? { rejectUnauthorized: false } : false,
+      // CRITICAL: Force IPv4 ONLY in lookup
+      lookup: (hostname, options, callback) => {
+        dns.resolve4(hostname, (err, addresses) => {
+          if (err) {
+            console.error(`DNS resolve4 failed for ${hostname}: ${err.message}`);
+            return callback(err);
+          }
+          if (!addresses || addresses.length === 0) {
+            return callback(new Error(`No IPv4 addresses found for ${hostname}`));
+          }
+          // Return first IPv4 address
+          callback(null, addresses[0], 4);
+        });
+      },
+      max: 20,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 15000,
+      statement_timeout: 15000,
+      query_timeout: 15000,
+      keepAlive: true,
+      keepAliveInitialDelayMillis: 10000,
+      // Disable IPv6
+      family: 4,
+    });
+
+    // Handle pool errors
+    pool.on('error', (err) => {
+      console.error('❌ Pool error:', err.code, '-', err.message);
+    });
+
+    // Test the connection immediately
+    console.log(`⏳ Testing database connection to ${resolvedDbHost}:${dbPort}...`);
+    const client = await pool.connect();
+    const result = await client.query('SELECT NOW()');
+    client.release();
+    console.log(`✅ Database connection verified at: ${result.rows[0].now}`);
+
+    poolInitialized = true;
+    console.log('✓ Database pool initialized successfully (IPv4 only)');
+  } catch (error) {
+    initializationError = error;
+    console.error('❌ FATAL: Database pool initialization failed:', error.message);
+    console.error('Check your DATABASE environment variables:');
+    console.error(`  DB_HOST: ${process.env.DB_HOST}`);
+    console.error(`  DB_PORT: ${process.env.DB_PORT}`);
+    console.error(`  DB_USER: ${process.env.DB_USER}`);
+    console.error(`  DB_SSL: ${process.env.DB_SSL}`);
+    process.exit(1);
+  }
+}
+
+// Initialize pool immediately at module load
+await initializePool();
+
+// Get pool with safety check
+function getPool() {
+  if (!pool || !poolInitialized) {
+    throw new Error('Database pool not initialized');
+  }
+  return pool;
+}
+
 
     console.log(`🔗 Connecting to PostgreSQL: ${dbUser}@${dbHost}:${dbPort}/${dbName}`);
 
