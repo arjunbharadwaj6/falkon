@@ -28,6 +28,10 @@ router.post('/signup', async (req, res, next) => {
       return res.status(400).json({ error: 'company name and username are required' });
     }
 
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'password must be at least 8 characters' });
+    }
+
     const existing = await query('SELECT id FROM accounts WHERE email = $1 OR username = $2', [email.toLowerCase(), username.toLowerCase()]);
     if (existing.rows.length) {
       return res.status(409).json({ error: 'account with this email or username already exists' });
@@ -46,6 +50,10 @@ router.post('/signup', async (req, res, next) => {
 
     res.status(201).json({ token, account: normalizeLoginResponse(account) });
   } catch (error) {
+    console.error('Signup error:', error);
+    if (error.code === 'ENETUNREACH' || error.code === 'ECONNREFUSED') {
+      return res.status(503).json({ error: 'Database connection failed. Please try again.' });
+    }
     next(error);
   }
 });
@@ -76,6 +84,10 @@ router.post('/login', async (req, res, next) => {
     const token = signToken({ accountId: account.id, email: account.email, role: account.role, parentAccountId: account.parentAccountId });
     res.json({ token, account: normalizeLoginResponse(account) });
   } catch (error) {
+    console.error('Login error:', error);
+    if (error.code === 'ENETUNREACH' || error.code === 'ECONNREFUSED') {
+      return res.status(503).json({ error: 'Database connection failed. Please try again.' });
+    }
     next(error);
   }
 });

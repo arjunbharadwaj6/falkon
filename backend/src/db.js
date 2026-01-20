@@ -1,69 +1,119 @@
 import pg from 'pg';
 import dns from 'dns';
+import os from 'os';
 import { promisify } from 'util';
 import dotenv from 'dotenv';
 
 dotenv.config();
+
+// CRITICAL: Disable IPv6 at the DNS level to prevent ENETUNREACH errors on platforms without IPv6 routing
+dns.setDefaultResultOrder('ipv4first');
 
 const { Pool } = pg;
 const dnsLookup = promisify(dns.lookup);
 
 let pool;
 let poolInitialized = false;
+let initializationError = null;
 
-// Initialize pool with proper IPv4 resolution
+// Initialize pool with guaranteed IPv4-only connections
 async function initializePool() {
   if (poolInitialized) return;
+  if (initializationError) throw initializationError;
   
-  let resolvedDbHost = process.env.DB_HOST;
-  
-  // Try to resolve to IPv4
   try {
-    const address = await dnsLookup(process.env.DB_HOST, { family: 4 });
-    resolvedDbHost = address.address;
-    console.log(`✓ DB host resolved to IPv4: ${resolvedDbHost}`);
-  } catch (err) {
-    console.warn(`⚠ DNS resolution failed, using hostname: ${err.message}`);
+    const dbHost = process.env.DB_HOST;
+    const dbPort = parseInt(process.env.DB_PORT || '5432');
+    const dbUser = process.env.DB_USER;
+    const dbPassword = process.env.DB_PASSWORD;
+    const dbName = process.env.DB_NAME;
+    const dbSsl = process.env.DB_SSL === 'true';
+
+    console.log(`🔗 Connecting to PostgreSQL: ${dbUser}@${dbHost}:${dbPort}/${dbName}`);
+
+    let resolvedDbHost = dbHost;
+    
+    // Resolve hostname to IPv4 address
+    try {
+      const address = await dnsLookup(dbHost, { family: 4, all: false });
+      resolvedDbHost = address.address;
+      console.log(`✓ Resolved ${dbHost} to IPv4: ${resolvedDbHost}`);
+    } catch (dnsErr) {
+      console.warn(`⚠ DNS resolution to IPv4 failed: ${dnsErr.message}, using hostname`);
+      // Continue with hostname, but mark it as a concern
+    }
+
+    pool = new Pool({
+      host: resolvedDbHost,
+      port: dbPort,
+      database: dbName,
+      user: dbUser,
+      password: dbPassword,
+      ssl: dbSsl ? { rejectUnauthorized: false } : false,
+      // Force IPv4 ONLY - reject IPv6 lookups
+      lookup: (hostname, options, callback) => {
+        dns.lookup(hostname, { family: 4, all: false }, callback);
+      },
+      max: 20,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 15000,
+      statement_timeout: 15000,
+      query_timeout: 15000,
+      keepAlive: true,
+      keepAliveInitialDelayMillis: 10000,
+      // Don't try IPv6 as a fallback
+      family: 4,
+    });
+
+    // Handle pool errors
+    pool.on('error', (err) => {
+      console.error('❌ Unexpected pool error:', err.message);
+    });
+
+    pool.on('connect', () => {
+      console.log('✓ New database connection established');
+    });
+
+    pool.on('remove', () => {
+      console.log('ℹ Database connection removed from pool');
+    });
+
+    // Test the connection immediately
+    try {
+      const client = await pool.connect();
+      const result = await client.query('SELECT NOW()');
+      client.release();
+      console.log(`✅ Database connection verified at: ${result.rows[0].now}`);
+    } catch (testErr) {
+      await pool.end();
+      throw new Error(`Failed to verify database connection: ${testErr.message}`);
+    }
+
+    poolInitialized = true;
+    console.log('✓ Database pool initialized successfully');
+  } catch (error) {
+    initializationError = error;
+    console.error('❌ Failed to initialize database pool:', error.message);
+    throw error;
   }
-
-  pool = new Pool({
-    host: resolvedDbHost,
-    port: process.env.DB_PORT || 5432,
-    database: process.env.DB_NAME,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
-    // Force IPv4 only
-    lookup: (hostname, options, callback) => {
-      dns.lookup(hostname, { family: 4 }, callback);
-    },
-    max: 20,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000,
-    statement_timeout: 10000,
-    query_timeout: 10000,
-    keepAlive: true,
-    keepAliveInitialDelayMillis: 10000,
-  });
-
-  // Handle pool errors gracefully
-  pool.on('error', (err, client) => {
-    console.error('Unexpected error on idle client:', err.message);
-  });
-  
-  poolInitialized = true;
 }
 
-// Initialize pool immediately
-await initializePool();
+// Initialize pool immediately at module load
+try {
+  await initializePool();
+} catch (err) {
+  console.error('FATAL: Database pool initialization failed:', err.message);
+  process.exit(1);
+}
 
-// Export pool getter that ensures initialization
+// Get pool with safety check
 function getPool() {
   if (!pool || !poolInitialized) {
-    throw new Error('Database pool not initialized');
+    throw new Error('Database pool not initialized - check your database connection settings');
   }
   return pool;
 }
+
 
 
 // Test database connection
