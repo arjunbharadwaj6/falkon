@@ -19,6 +19,36 @@ export const ResetPassword: React.FC = () => {
   const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  // Helper: POST with retry + timeout for network robustness
+  const postWithRetry = async (
+    url: string,
+    body: unknown,
+    options?: { retries?: number; timeoutMs?: number }
+  ) => {
+    const retries = options?.retries ?? 2;
+    const timeoutMs = options?.timeoutMs ?? 10000;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+          mode: "cors",
+        });
+        clearTimeout(timer);
+        return res;
+      } catch (e) {
+        clearTimeout(timer);
+        if (attempt === retries) throw e;
+        await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+      }
+    }
+    throw new Error("Network retry failed");
+  };
+
   useEffect(() => {
     const emailParam = searchParams.get("email");
     const tokenParam = searchParams.get("token");
@@ -49,17 +79,11 @@ export const ResetPassword: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE}/auth/reset-password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-          token,
-          newPassword: password,
-        }),
-      });
+      const response = await postWithRetry(
+        `${API_BASE}/auth/reset-password`,
+        { email, token, newPassword: password },
+        { retries: 2, timeoutMs: 12000 }
+      );
 
       const data = await response.json();
 
@@ -71,14 +95,11 @@ export const ResetPassword: React.FC = () => {
       setTimeout(() => navigate("/login"), 2000);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "An error occurred";
-      console.error("Reset password error:", {
-        errorMsg,
-        API_BASE,
-        fullError: err,
-      });
-      setError(
-        `Failed: ${errorMsg}\n\nAPI URL: ${API_BASE}/auth/reset-password`,
-      );
+      console.error("Reset password error:", { errorMsg, API_BASE, fullError: err });
+      const hint = errorMsg.includes("Failed to fetch")
+        ? "Possible CORS or network issue."
+        : "";
+      setError(`Failed: ${errorMsg}\n${hint ? hint + "\n" : ""}\nAPI URL: ${API_BASE}/auth/reset-password`);
     } finally {
       setLoading(false);
     }
