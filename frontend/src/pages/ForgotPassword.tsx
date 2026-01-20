@@ -13,20 +13,51 @@ export const ForgotPassword: React.FC = () => {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Helper: POST with retry + timeout for network robustness
+  const postWithRetry = async (
+    url: string,
+    body: unknown,
+    options?: { retries?: number; timeoutMs?: number }
+  ) => {
+    const retries = options?.retries ?? 2;
+    const timeoutMs = options?.timeoutMs ?? 10000;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+          mode: "cors",
+        });
+        clearTimeout(timer);
+        return res;
+      } catch (e) {
+        clearTimeout(timer);
+        if (attempt === retries) throw e;
+        await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+      }
+    }
+    throw new Error("Network retry failed");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
     try {
-      console.log("Sending forgot password request to:", `${API_BASE}/auth/forgot-password`);
-      const response = await fetch(`${API_BASE}/auth/forgot-password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email }),
-      });
+      console.log(
+        "Sending forgot password request to:",
+        `${API_BASE}/auth/forgot-password`,
+      );
+      const response = await postWithRetry(
+        `${API_BASE}/auth/forgot-password`,
+        { email },
+        { retries: 2, timeoutMs: 12000 }
+      );
 
       if (!response.ok) {
         const data = await response.json();
@@ -37,7 +68,10 @@ export const ForgotPassword: React.FC = () => {
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "An error occurred";
       console.error("Forgot password error:", { errorMsg, API_BASE, fullError: err });
-      setError(`Failed: ${errorMsg}\n\nAPI URL: ${API_BASE}/auth/forgot-password`);
+      const hint = errorMsg.includes("Failed to fetch")
+        ? "Possible CORS or network issue."
+        : "";
+      setError(`Failed: ${errorMsg}\n${hint ? hint + "\n" : ""}\nAPI URL: ${API_BASE}/auth/forgot-password`);
     } finally {
       setLoading(false);
     }
