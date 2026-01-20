@@ -1,4 +1,5 @@
 import pg from 'pg';
+import dns from 'dns';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -13,6 +14,10 @@ const pool = new Pool({
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+  // Force IPv4 lookups to avoid IPv6 connectivity issues on some hosts
+  lookup: (hostname, options, callback) => {
+    dns.lookup(hostname, { family: 4, hints: dns.ADDRCONFIG }, callback);
+  },
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000, // Increased to 10 seconds

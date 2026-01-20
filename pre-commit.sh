@@ -28,12 +28,16 @@ fi
 # Check for actual hardcoded credentials (not variable names or parameters)
 # This looks for patterns like: PASSWORD="actualvalue" or API_KEY='actualkey123'
 # But excludes: password_hash, const password, function(password), etc.
-if git diff --cached | grep -E "^[+].*\b(PASSWORD|SECRET|API_KEY|PRIVATE_KEY|ACCESS_TOKEN)\s*=\s*['\"][a-zA-Z0-9_\-\+\/]{10,}['\"]"; then
+if git diff --cached \
+    | grep -E "^[+].*\b(PASSWORD|SECRET|API_KEY|PRIVATE_KEY|ACCESS_TOKEN)\s*=\s*['\"][a-zA-Z0-9_\-\+\/]{10,}['\"]" \
+    | grep -v "^+#"; then
     echo -e "${RED}✗ ERROR: Found hardcoded credentials in staged files!${NC}"
     echo -e "${YELLOW}  Detected environment variable assignments with actual values.${NC}"
     echo ""
     echo "Matches:"
-    git diff --cached | grep -E "^[+].*\b(PASSWORD|SECRET|API_KEY|PRIVATE_KEY|ACCESS_TOKEN)\s*=\s*['\"][a-zA-Z0-9_\-\+\/]{10,}['\"]"
+        git diff --cached \
+            | grep -E "^[+].*\b(PASSWORD|SECRET|API_KEY|PRIVATE_KEY|ACCESS_TOKEN)\s*=\s*['\"][a-zA-Z0-9_\-\+\/]{10,}['\"]" \
+            | grep -v "^+#"
     echo ""
     echo "Use environment variables instead (.env file)"
     exit 1
