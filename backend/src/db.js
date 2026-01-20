@@ -6,9 +6,21 @@ dotenv.config();
 
 const { Pool } = pg;
 
+// Resolve DB host to IPv4 to avoid ENETUNREACH on platforms without IPv6 routing
+let resolvedDbHost = process.env.DB_HOST;
+try {
+  const ipv4 = await dns.promises.resolve4(process.env.DB_HOST);
+  if (ipv4?.length) {
+    resolvedDbHost = ipv4[0];
+    console.log(`✓ DB host resolved to IPv4: ${resolvedDbHost}`);
+  }
+} catch (err) {
+  console.warn(`⚠ Could not resolve DB_HOST ${process.env.DB_HOST} to IPv4: ${err.message}`);
+}
+
 // Create a reusable database connection pool
 const pool = new Pool({
-  host: process.env.DB_HOST,
+  host: resolvedDbHost,
   port: process.env.DB_PORT || 5432,
   database: process.env.DB_NAME,
   user: process.env.DB_USER,
