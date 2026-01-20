@@ -66,10 +66,19 @@ export const ResetPassword: React.FC = () => {
       if (!response.ok) {
         throw new Error(data.error || "Failed to reset password");
       }
+
+      setSuccess(true);
+      setTimeout(() => navigate("/login"), 2000);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "An error occurred";
-      console.error("Reset password error:", { errorMsg, API_BASE, fullError: err });
-      setError(`Failed: ${errorMsg}\n\nAPI URL: ${API_BASE}/auth/reset-password`);
+      console.error("Reset password error:", {
+        errorMsg,
+        API_BASE,
+        fullError: err,
+      });
+      setError(
+        `Failed: ${errorMsg}\n\nAPI URL: ${API_BASE}/auth/reset-password`,
+      );
     } finally {
       setLoading(false);
     }
