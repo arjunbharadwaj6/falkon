@@ -2,44 +2,44 @@ name: Security Audit
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 jobs:
   security-audit:
     runs-on: ubuntu-latest
-    
+
     strategy:
       matrix:
         directory: [backend, frontend]
-    
+
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
-        
-    - name: Install dependencies
-      working-directory: ./${{ matrix.directory }}
-      run: npm ci
-      
-    - name: Run security audit
-      working-directory: ./${{ matrix.directory }}
-      run: npm audit --audit-level=moderate
-      
-    - name: Check for secrets in code
-      run: |
-        if grep -r "password.*=.*['\"]" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --exclude-dir=node_modules .; then
-          echo "::error::Found potential hardcoded passwords in code"
-          exit 1
-        fi
-        
-    - name: Verify .env files are not committed
-      run: |
-        if git ls-files | grep -E "\.env$" | grep -v "\.env\.example"; then
-          echo "::error::.env files should not be committed to git"
-          exit 1
-        fi
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+
+      - name: Install dependencies
+        working-directory: ./${{ matrix.directory }}
+        run: npm ci
+
+      - name: Run security audit
+        working-directory: ./${{ matrix.directory }}
+        run: npm audit --audit-level=moderate
+
+      - name: Check for secrets in code
+        run: |
+          if grep -r "password.*=.*['\"]" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --exclude-dir=node_modules .; then
+            echo "::error::Found potential hardcoded passwords in code"
+            exit 1
+          fi
+
+      - name: Verify .env files are not committed
+        run: |
+          if git ls-files | grep -E "\.env$" | grep -v "\.env\.example"; then
+            echo "::error::.env files should not be committed to git"
+            exit 1
+          fi

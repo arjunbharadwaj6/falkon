@@ -16,12 +16,14 @@ A modern, full-stack Applicant Tracking System built with React, TypeScript, Nod
 ## Tech Stack
 
 ### Frontend
+
 - React 18 with TypeScript
 - Vite for build tooling
 - Tailwind CSS for styling
 - React Router for navigation
 
 ### Backend
+
 - Node.js with Express
 - PostgreSQL database (Supabase compatible)
 - JWT authentication
@@ -55,16 +57,19 @@ cp .env.example .env
 ```
 
 Configure your `.env` file with:
+
 - Database credentials (PostgreSQL/Supabase)
 - JWT secret (generate a strong random string)
 - Email service credentials (Gmail or SMTP)
 
 Run database migrations:
+
 ```bash
 npm run migrate
 ```
 
 Start the backend:
+
 ```bash
 npm run dev
 ```
@@ -83,6 +88,7 @@ cp .env.example .env
 ```
 
 Start the frontend:
+
 ```bash
 npm run dev
 ```
@@ -110,6 +116,7 @@ See `backend/.env.example` for full configuration. Key variables:
 ## Database Schema
 
 The application uses PostgreSQL with the following main tables:
+
 - `accounts` - User accounts with role-based access
 - `candidates` - Candidate information and status tracking
 - `jobs` - Job postings
@@ -126,11 +133,13 @@ http://localhost:5173/signup
 ## Email Configuration
 
 ### Gmail Setup
+
 1. Enable 2-Factor Authentication on your Google account
 2. Generate an App Password at https://myaccount.google.com/apppasswords
 3. Use the app password in your `.env` file
 
 ### SMTP Setup
+
 Configure your SMTP provider details (Zoho, SendGrid, AWS SES, etc.) in `.env`
 
 ## Security
@@ -175,24 +184,28 @@ ATS/
 ## API Endpoints
 
 ### Authentication
+
 - `POST /auth/signup` - Create admin account
 - `POST /auth/login` - Login
 - `POST /auth/forgot-password` - Request password reset
 - `POST /auth/reset-password` - Reset password with token
 
 ### Candidates
+
 - `GET /candidates` - List all candidates
 - `POST /candidates` - Create candidate
 - `PUT /candidates/:id` - Update candidate
 - `DELETE /candidates/:id` - Delete candidate
 
 ### Jobs
+
 - `GET /jobs` - List all jobs
 - `POST /jobs` - Create job
 - `PUT /jobs/:id` - Update job
 - `DELETE /jobs/:id` - Delete job
 
 ### Team Management (Admin only)
+
 - `GET /auth/recruiters` - List team members
 - `POST /auth/recruiters` - Add team member
 - `PUT /auth/recruiters/:id/password` - Reset team member password
@@ -200,18 +213,21 @@ ATS/
 ## Development
 
 ### Backend
+
 ```bash
 cd backend
 npm run dev  # Auto-restart on file changes
 ```
 
 ### Frontend
+
 ```bash
 cd frontend
 npm run dev  # Hot module replacement
 ```
 
 ### Database Migrations
+
 ```bash
 cd backend
 npm run migrate  # Run all migrations
@@ -231,6 +247,7 @@ npm run migrate  # Run all migrations
 ## Troubleshooting
 
 See documentation files:
+
 - [DATABASE_TROUBLESHOOTING.md](DATABASE_TROUBLESHOOTING.md)
 - [EMAIL_CONFIGURATION.md](EMAIL_CONFIGURATION.md)
 - [FORGOT_PASSWORD_FEATURE.md](FORGOT_PASSWORD_FEATURE.md)

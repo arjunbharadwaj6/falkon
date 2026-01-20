@@ -13,27 +13,32 @@ If you discover a security vulnerability in this ATS (Applicant Tracking System)
 ## Security Measures
 
 ### Environment Variables
+
 - All sensitive credentials are stored in `.env` files
 - `.env` files are excluded from git via `.gitignore`
 - `.env.example` files provide templates without sensitive data
 
 ### Database Security
+
 - PostgreSQL with SSL/TLS encryption for production
 - Parameterized queries to prevent SQL injection
 - Password hashing using bcryptjs with salt rounds
 
 ### Authentication & Authorization
+
 - JWT-based authentication with secure secret keys
 - Role-based access control (Admin/Recruiter)
 - Password reset tokens with 1-hour expiration
 - Secure password requirements (minimum 8 characters)
 
 ### API Security
+
 - CORS configuration for trusted origins only
 - Input validation and sanitization
 - Error messages don't expose sensitive information
 
 ### Best Practices
+
 1. **Never commit `.env` files** - They contain sensitive credentials
 2. **Use strong JWT secrets** - Minimum 32 characters, randomly generated
 3. **Enable database SSL** - Always use SSL/TLS in production
@@ -78,6 +83,7 @@ npm outdated
 ## Secrets Management
 
 ### DO NOT commit:
+
 - `.env` files
 - Database credentials
 - API keys
@@ -86,6 +92,7 @@ npm outdated
 - Any file containing sensitive data
 
 ### Safe to commit:
+
 - `.env.example` (with placeholder values)
 - `.gitignore` (properly configured)
 - Code without hardcoded secrets

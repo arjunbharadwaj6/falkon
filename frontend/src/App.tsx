@@ -13,7 +13,7 @@ import { ProtectedRoute } from "./auth/ProtectedRoute";
 import { useAuth } from "./auth/AuthProvider";
 
 function App() {
-  const { token, logout, account } = useAuth();
+  const { token, account } = useAuth();
   const isRecruiter = account?.role === "recruiter";
 
   return (

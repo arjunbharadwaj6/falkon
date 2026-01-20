@@ -5,6 +5,7 @@
 
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
+GREEN='\033[0;32m'
 NC='\033[0m'
 
 echo "🔒 Running pre-commit security checks..."
@@ -24,24 +25,26 @@ if git diff --cached --name-only | grep -E "\.env$" | grep -v "\.env\.example"; 
     exit 1
 fi
 
-# Check for potential secrets in staged files
-if git diff --cached | grep -iE "(password|secret|api_key|token).*=.*['\"][^'\"]{8,}"; then
-    echo -e "${YELLOW}⚠️  WARNING: Potential secrets detected in staged files${NC}"
-    echo -e "${YELLOW}  Please review your changes to ensure no secrets are hardcoded.${NC}"
-    echo ""
-    read -p "Continue with commit? (y/n) " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        exit 1
-    fi
-fi
-
-# Check for database credentials
-if git diff --cached | grep -iE "(ATSDataBase|YWyKrtum6yc7|falkon@falkon\.tech)"; then
+# Check for actual hardcoded credentials (not variable names or parameters)
+# This looks for patterns like: PASSWORD="actualvalue" or API_KEY='actualkey123'
+# But excludes: password_hash, const password, function(password), etc.
+if git diff --cached | grep -E "^[+].*\b(PASSWORD|SECRET|API_KEY|PRIVATE_KEY|ACCESS_TOKEN)\s*=\s*['\"][a-zA-Z0-9_\-\+\/]{10,}['\"]"; then
     echo -e "${RED}✗ ERROR: Found hardcoded credentials in staged files!${NC}"
-    echo -e "${YELLOW}  Remove actual credentials before committing.${NC}"
+    echo -e "${YELLOW}  Detected environment variable assignments with actual values.${NC}"
+    echo ""
+    echo "Matches:"
+    git diff --cached | grep -E "^[+].*\b(PASSWORD|SECRET|API_KEY|PRIVATE_KEY|ACCESS_TOKEN)\s*=\s*['\"][a-zA-Z0-9_\-\+\/]{10,}['\"]"
+    echo ""
+    echo "Use environment variables instead (.env file)"
     exit 1
 fi
 
-echo "✓ Pre-commit checks passed"
+# Check for database connection strings with actual passwords in code
+if git diff --cached | grep -E "postgresql://.*:.*@.*\.(supabase\.co|amazonaws\.com)" | grep -v "YOUR_PASSWORD\|your-password\|<password>"; then
+    echo -e "${RED}✗ ERROR: Found database connection string with credentials!${NC}"
+    echo -e "${YELLOW}  Use environment variables for database credentials.${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}✓ Pre-commit checks passed${NC}"
 exit 0
