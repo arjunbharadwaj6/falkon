@@ -2,6 +2,7 @@ import pg from 'pg';
 import dns from 'dns';
 import { promisify } from 'util';
 import dotenv from 'dotenv';
+import { URL } from 'url';
 
 dotenv.config();
 
@@ -15,52 +16,69 @@ let pool;
 let poolInitialized = false;
 let initializationError = null;
 
+// Parse DATABASE_URL into pool config
+function parseDatabaseUrl() {
+  const databaseUrl = process.env.DATABASE_URL;
+  
+  if (!databaseUrl) {
+    throw new Error('DATABASE_URL environment variable is not set');
+  }
+
+  try {
+    const url = new URL(databaseUrl);
+    return {
+      user: url.username,
+      password: url.password,
+      host: url.hostname,
+      port: parseInt(url.port || '5432'),
+      database: url.pathname.slice(1), // Remove leading /
+    };
+  } catch (error) {
+    throw new Error(`Invalid DATABASE_URL format: ${error.message}`);
+  }
+}
+
 // Initialize pool with GUARANTEED IPv4-only connections
 async function initializePool() {
   if (poolInitialized) return;
   if (initializationError) throw initializationError;
   
   try {
-    const dbHost = process.env.DB_HOST;
-    const dbPort = parseInt(process.env.DB_PORT || '5432');
-    const dbUser = process.env.DB_USER;
-    const dbPassword = process.env.DB_PASSWORD;
-    const dbName = process.env.DB_NAME;
-    const dbSsl = process.env.DB_SSL === 'true';
+    const dbConfig = parseDatabaseUrl();
+    const { user, password, host, port, database } = dbConfig;
 
-    console.log(`🔗 Connecting to PostgreSQL: ${dbUser}@${dbHost}:${dbPort}/${dbName}`);
+    console.log(`🔗 Connecting to PostgreSQL: ${user}@${host}:${port}/${database}`);
 
-    let resolvedDbHost = dbHost;
+    let resolvedDbHost = host;
     
     // CRITICAL: Resolve to IPv4 ONLY - reject IPv6 entirely
     try {
       // Use resolve4 which only returns IPv4 addresses
-      const ipv4Addresses = await resolve4(dbHost);
+      const ipv4Addresses = await resolve4(host);
       if (ipv4Addresses && ipv4Addresses.length > 0) {
         resolvedDbHost = ipv4Addresses[0];
-        console.log(`✓ Resolved ${dbHost} to IPv4: ${resolvedDbHost}`);
+        console.log(`✓ Resolved ${host} to IPv4: ${resolvedDbHost}`);
       }
     } catch (dnsErr) {
-      console.warn(`⚠ Could not resolve ${dbHost} to IPv4: ${dnsErr.message}`);
+      console.warn(`⚠ Could not resolve ${host} to IPv4: ${dnsErr.message}`);
       console.warn(`  This likely means DNS is returning IPv6, which Render does not support.`);
-      console.warn(`  Solution: Contact Supabase support or use the IPv4 address directly.`);
       
-      // Check if dbHost is already an IP
-      if (/^\d+\.\d+\.\d+\.\d+$/.test(dbHost)) {
-        console.log(`  Using provided IPv4 address: ${dbHost}`);
-        resolvedDbHost = dbHost;
+      // Check if host is already an IP
+      if (/^\d+\.\d+\.\d+\.\d+$/.test(host)) {
+        console.log(`  Using provided IPv4 address: ${host}`);
+        resolvedDbHost = host;
       } else {
-        throw new Error(`Failed to resolve ${dbHost} to IPv4 address. Render requires IPv4 connectivity.`);
+        throw new Error(`Failed to resolve ${host} to IPv4 address. Render requires IPv4 connectivity.`);
       }
     }
 
     pool = new Pool({
+      user,
+      password,
       host: resolvedDbHost,
-      port: dbPort,
-      database: dbName,
-      user: dbUser,
-      password: dbPassword,
-      ssl: dbSsl ? { rejectUnauthorized: false } : false,
+      port,
+      database,
+      ssl: { rejectUnauthorized: false }, // Railway requires SSL
       // CRITICAL: Force IPv4 ONLY in lookup
       lookup: (hostname, options, callback) => {
         dns.resolve4(hostname, (err, addresses) => {
@@ -92,7 +110,7 @@ async function initializePool() {
     });
 
     // Test the connection immediately
-    console.log(`⏳ Testing database connection to ${resolvedDbHost}:${dbPort}...`);
+    console.log(`⏳ Testing database connection to ${resolvedDbHost}:${port}...`);
     const client = await pool.connect();
     const result = await client.query('SELECT NOW()');
     client.release();
