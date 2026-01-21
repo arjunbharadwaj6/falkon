@@ -10,6 +10,7 @@ import { Signup } from "./pages/Signup";
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { ResetPassword } from "./pages/ResetPassword";
 import { ProtectedRoute } from "./auth/ProtectedRoute";
+import { Landing } from "./pages/Landing";
 import { useAuth } from "./auth/AuthProvider";
 
 function App() {
@@ -36,13 +37,15 @@ function App() {
             <Route
               path="/"
               element={
-                <ProtectedRoute>
-                  {isRecruiter ? (
+                token ? (
+                  isRecruiter ? (
                     <Navigate to="/candidates" replace />
                   ) : (
                     <Dashboard />
-                  )}
-                </ProtectedRoute>
+                  )
+                ) : (
+                  <Landing />
+                )
               }
             />
             <Route
@@ -81,7 +84,7 @@ function App() {
               path="*"
               element={
                 <Navigate
-                  to={token ? (isRecruiter ? "/candidates" : "/") : "/login"}
+                  to={token ? (isRecruiter ? "/candidates" : "/") : "/"}
                   replace
                 />
               }

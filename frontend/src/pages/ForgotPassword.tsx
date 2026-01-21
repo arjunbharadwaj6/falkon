@@ -17,7 +17,7 @@ export const ForgotPassword: React.FC = () => {
   const postWithRetry = async (
     url: string,
     body: unknown,
-    options?: { retries?: number; timeoutMs?: number }
+    options?: { retries?: number; timeoutMs?: number },
   ) => {
     const retries = options?.retries ?? 2;
     const timeoutMs = options?.timeoutMs ?? 10000;
@@ -56,7 +56,7 @@ export const ForgotPassword: React.FC = () => {
       const response = await postWithRetry(
         `${API_BASE}/auth/forgot-password`,
         { email },
-        { retries: 2, timeoutMs: 12000 }
+        { retries: 2, timeoutMs: 12000 },
       );
 
       if (!response.ok) {
@@ -67,11 +67,17 @@ export const ForgotPassword: React.FC = () => {
       setSubmitted(true);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "An error occurred";
-      console.error("Forgot password error:", { errorMsg, API_BASE, fullError: err });
+      console.error("Forgot password error:", {
+        errorMsg,
+        API_BASE,
+        fullError: err,
+      });
       const hint = errorMsg.includes("Failed to fetch")
         ? "Possible CORS or network issue."
         : "";
-      setError(`Failed: ${errorMsg}\n${hint ? hint + "\n" : ""}\nAPI URL: ${API_BASE}/auth/forgot-password`);
+      setError(
+        `Failed: ${errorMsg}\n${hint ? hint + "\n" : ""}\nAPI URL: ${API_BASE}/auth/forgot-password`,
+      );
     } finally {
       setLoading(false);
     }

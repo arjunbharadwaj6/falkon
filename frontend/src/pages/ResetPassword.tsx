@@ -23,7 +23,7 @@ export const ResetPassword: React.FC = () => {
   const postWithRetry = async (
     url: string,
     body: unknown,
-    options?: { retries?: number; timeoutMs?: number }
+    options?: { retries?: number; timeoutMs?: number },
   ) => {
     const retries = options?.retries ?? 2;
     const timeoutMs = options?.timeoutMs ?? 10000;
@@ -82,7 +82,7 @@ export const ResetPassword: React.FC = () => {
       const response = await postWithRetry(
         `${API_BASE}/auth/reset-password`,
         { email, token, newPassword: password },
-        { retries: 2, timeoutMs: 12000 }
+        { retries: 2, timeoutMs: 12000 },
       );
 
       const data = await response.json();
@@ -95,11 +95,17 @@ export const ResetPassword: React.FC = () => {
       setTimeout(() => navigate("/login"), 2000);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "An error occurred";
-      console.error("Reset password error:", { errorMsg, API_BASE, fullError: err });
+      console.error("Reset password error:", {
+        errorMsg,
+        API_BASE,
+        fullError: err,
+      });
       const hint = errorMsg.includes("Failed to fetch")
         ? "Possible CORS or network issue."
         : "";
-      setError(`Failed: ${errorMsg}\n${hint ? hint + "\n" : ""}\nAPI URL: ${API_BASE}/auth/reset-password`);
+      setError(
+        `Failed: ${errorMsg}\n${hint ? hint + "\n" : ""}\nAPI URL: ${API_BASE}/auth/reset-password`,
+      );
     } finally {
       setLoading(false);
     }
