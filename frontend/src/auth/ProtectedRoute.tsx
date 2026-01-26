@@ -4,17 +4,27 @@ import { useAuth } from "./AuthProvider";
 type ProtectedRouteProps = {
   children: React.ReactNode;
   allowedRoles?: Array<"admin" | "recruiter">;
+  superAdminOnly?: boolean;
 };
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   allowedRoles,
+  superAdminOnly = false,
 }) => {
   const { token, account } = useAuth();
   const location = useLocation();
 
   if (!token) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  }
+
+  // Check if super admin only route
+  if (superAdminOnly) {
+    const isSuperAdmin = account?.role === "admin" && !account?.parentAccountId;
+    if (!isSuperAdmin) {
+      return <Navigate to="/" replace />;
+    }
   }
 
   if (allowedRoles && account && !allowedRoles.includes(account.role)) {
