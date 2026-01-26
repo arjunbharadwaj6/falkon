@@ -3,11 +3,13 @@
 For the React Router to work correctly on refresh/direct navigation to routes like `/jobs`, `/approvals`, etc., the web server must serve `index.html` for all non-asset requests.
 
 ## Development (Vite)
+
 Vite handles this automatically with `npm run dev`.
 
 ## Production Deployment
 
 ### Nginx
+
 ```nginx
 server {
     listen 80;
@@ -29,6 +31,7 @@ server {
 ```
 
 ### Apache
+
 ```apache
 <Directory /var/www/falkon/frontend/dist>
     RewriteEngine On
@@ -41,15 +44,19 @@ server {
 ```
 
 ### Vercel (Automatic)
+
 Vercel automatically handles SPA routing - no configuration needed.
 
 ### Netlify
+
 Add a `_redirects` file in the public folder:
+
 ```
 /* /index.html 200
 ```
 
 Or use netlify.toml:
+
 ```toml
 [[redirects]]
   from = "/*"
@@ -58,17 +65,20 @@ Or use netlify.toml:
 ```
 
 ### Node.js Express
+
 ```javascript
-app.use(express.static('dist'));
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+app.use(express.static("dist"));
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "dist", "index.html"));
 });
 ```
 
 ### CloudFlare Pages
+
 Automatic - no configuration needed.
 
 ## Testing Locally
+
 ```bash
 # Build the frontend
 npm run build
