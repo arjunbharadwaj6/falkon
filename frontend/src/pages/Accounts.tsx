@@ -71,93 +71,145 @@ export const Accounts: React.FC = () => {
 
   if (!isSuperAdmin) {
     return (
-      <div className="p-6">
-        <h2 className="text-2xl font-bold">Accounts</h2>
-        <p className="text-sm text-gray-300 mt-2">
-          Only the super admin can view this page.
-        </p>
+      <div className="min-h-screen bg-white p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-8 text-center">
+            <h2 className="text-2xl font-bold text-gray-900">Accounts</h2>
+            <p className="text-sm text-gray-600 mt-2">
+              Only the super admin can view this page.
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold">All Accounts</h2>
-        <div className="flex items-center gap-2">
-          <input
-            value={filter.search}
-            onChange={(e) => setFilter({ ...filter, search: e.target.value })}
-            placeholder="Search company/email/username"
-            className="px-3 py-1.5 rounded bg-gray-800 border border-gray-700 text-sm text-gray-100 w-72"
-          />
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={filter.onlyPending}
-              onChange={(e) =>
-                setFilter({ ...filter, onlyPending: e.target.checked })
-              }
-            />
-            Show only pending
-          </label>
-          <button
-            onClick={loadAccounts}
-            className="px-3 py-1.5 rounded bg-blue-700 text-white text-sm hover:bg-blue-600"
-          >
-            Refresh
-          </button>
+    <div className="min-h-screen bg-white p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">All Accounts</h1>
+              <p className="text-gray-600 mt-1">Manage and monitor all system accounts</p>
+            </div>
+            <button
+              onClick={loadAccounts}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors shadow-sm"
+            >
+              ↻ Refresh
+            </button>
+          </div>
+
+          {/* Filters */}
+          <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-xl p-4">
+            <div className="flex-1">
+              <input
+                value={filter.search}
+                onChange={(e) => setFilter({ ...filter, search: e.target.value })}
+                placeholder="🔍 Search by company, email, or username..."
+                className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer whitespace-nowrap">
+              <input
+                type="checkbox"
+                checked={filter.onlyPending}
+                onChange={(e) =>
+                  setFilter({ ...filter, onlyPending: e.target.checked })
+                }
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <span className="font-medium">Pending only</span>
+            </label>
+          </div>
         </div>
+
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 flex items-start gap-3">
+            <span className="text-red-500 text-xl">⚠</span>
+            <span>{error}</span>
+          </div>
+        )}
+
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="text-center">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
+              <p className="text-gray-600 mt-4">Loading accounts...</p>
+            </div>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-12 text-center">
+            <div className="text-5xl mb-4">🔍</div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No accounts found</h3>
+            <p className="text-gray-600">Try adjusting your search filters.</p>
+          </div>
+        ) : (
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Company</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Email</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Username</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Role</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Created</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Approved</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Created By</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filtered.map((acc) => (
+                    <tr key={acc.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="font-medium text-gray-900">{acc.companyName}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{acc.email}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{acc.username ?? "—"}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {acc.role}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {acc.isApproved ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                            ✓ Approved
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                            ⏳ Pending
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {new Date(acc.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {acc.approvedAt
+                          ? new Date(acc.approvedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                          : "—"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{acc.createdByEmail ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+        
+        {/* Stats */}
+        {!loading && filtered.length > 0 && (
+          <div className="mt-4 text-sm text-gray-600 text-center">
+            Showing {filtered.length} of {items.length} accounts
+          </div>
+        )}
       </div>
-
-      {error && (
-        <div className="bg-red-50 text-red-800 border border-red-200 rounded p-3 mb-4">
-          {error}
-        </div>
-      )}
-
-      {loading ? (
-        <div className="text-gray-300">Loading accounts...</div>
-      ) : filtered.length === 0 ? (
-        <div className="text-gray-300">No accounts match your filters.</div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="text-left border-b border-gray-700">
-                <th className="py-2 pr-4">Company</th>
-                <th className="py-2 pr-4">Email</th>
-                <th className="py-2 pr-4">Username</th>
-                <th className="py-2 pr-4">Role</th>
-                <th className="py-2 pr-4">Approved</th>
-                <th className="py-2 pr-4">Created</th>
-                <th className="py-2 pr-4">Approved At</th>
-                <th className="py-2 pr-4">Created By</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((acc) => (
-                <tr key={acc.id} className="border-b border-gray-800">
-                  <td className="py-2 pr-4">{acc.companyName}</td>
-                  <td className="py-2 pr-4">{acc.email}</td>
-                  <td className="py-2 pr-4">{acc.username ?? "—"}</td>
-                  <td className="py-2 pr-4">{acc.role}</td>
-                  <td className="py-2 pr-4">{acc.isApproved ? "Yes" : "No"}</td>
-                  <td className="py-2 pr-4">
-                    {new Date(acc.createdAt).toLocaleString()}
-                  </td>
-                  <td className="py-2 pr-4">
-                    {acc.approvedAt
-                      ? new Date(acc.approvedAt).toLocaleString()
-                      : "—"}
-                  </td>
-                  <td className="py-2 pr-4">{acc.createdByEmail ?? "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
     </div>
   );
 };

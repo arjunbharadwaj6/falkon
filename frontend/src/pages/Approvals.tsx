@@ -97,82 +97,112 @@ export const Approvals: React.FC = () => {
 
   if (!isSuperAdmin) {
     return (
-      <div className="p-6">
-        <h2 className="text-2xl font-bold">Approvals</h2>
-        <p className="text-sm text-gray-300 mt-2">
-          Only the super admin can view this page.
-        </p>
+      <div className="min-h-screen bg-white p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-8 text-center">
+            <h2 className="text-2xl font-bold text-gray-900">Approvals</h2>
+            <p className="text-sm text-gray-600 mt-2">
+              Only the super admin can view this page.
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold">Pending Approvals</h2>
-        <button
-          onClick={loadPending}
-          className="px-3 py-1.5 rounded bg-blue-700 text-white text-sm hover:bg-blue-600"
-        >
-          Refresh
-        </button>
+    <div className="min-h-screen bg-white p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Pending Approvals</h1>
+              <p className="text-gray-600 mt-1">Review and approve new account registrations</p>
+            </div>
+            <button
+              onClick={loadPending}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors shadow-sm"
+            >
+              ↻ Refresh
+            </button>
+          </div>
+        </div>
+
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 flex items-start gap-3">
+            <span className="text-red-500 text-xl">⚠</span>
+            <span>{error}</span>
+          </div>
+        )}
+
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="text-center">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
+              <p className="text-gray-600 mt-4">Loading pending accounts...</p>
+            </div>
+          </div>
+        ) : pending.length === 0 ? (
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-12 text-center">
+            <div className="text-5xl mb-4">✓</div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">All Clear!</h3>
+            <p className="text-gray-600">No pending approvals at the moment.</p>
+          </div>
+        ) : (
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Company</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Email</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Username</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Role</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Requested</th>
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {pending.map((acc) => (
+                    <tr key={acc.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="font-medium text-gray-900">{acc.companyName}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{acc.email}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{acc.username}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {acc.role}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {new Date(acc.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right space-x-2">
+                        <button
+                          disabled={actionBusy === acc.id}
+                          onClick={() => approve(acc.id)}
+                          className="inline-flex items-center px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          ✓ Approve
+                        </button>
+                        <button
+                          disabled={actionBusy === acc.id}
+                          onClick={() => reject(acc.id)}
+                          className="inline-flex items-center px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          ✕ Reject
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
-
-      {error && (
-        <div className="bg-red-50 text-red-800 border border-red-200 rounded p-3 mb-4">
-          {error}
-        </div>
-      )}
-
-      {loading ? (
-        <div className="text-gray-300">Loading pending accounts...</div>
-      ) : pending.length === 0 ? (
-        <div className="text-gray-300">No pending approvals.</div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="text-left border-b border-gray-700">
-                <th className="py-2 pr-4">Company</th>
-                <th className="py-2 pr-4">Email</th>
-                <th className="py-2 pr-4">Username</th>
-                <th className="py-2 pr-4">Role</th>
-                <th className="py-2 pr-4">Created</th>
-                <th className="py-2 pr-4">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pending.map((acc) => (
-                <tr key={acc.id} className="border-b border-gray-800">
-                  <td className="py-2 pr-4">{acc.companyName}</td>
-                  <td className="py-2 pr-4">{acc.email}</td>
-                  <td className="py-2 pr-4">{acc.username}</td>
-                  <td className="py-2 pr-4">{acc.role}</td>
-                  <td className="py-2 pr-4">
-                    {new Date(acc.createdAt).toLocaleString()}
-                  </td>
-                  <td className="py-2 pr-4 space-x-2">
-                    <button
-                      disabled={actionBusy === acc.id}
-                      onClick={() => approve(acc.id)}
-                      className="px-2 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-50"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      disabled={actionBusy === acc.id}
-                      onClick={() => reject(acc.id)}
-                      className="px-2 py-1 rounded bg-red-600 text-white hover:bg-red-500 disabled:opacity-50"
-                    >
-                      Reject
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
     </div>
   );
 };
