@@ -765,4 +765,38 @@ router.get('/accounts', authRequired, async (req, res, next) => {
   }
 });
 
+// Delete account (super admin only)
+router.delete('/accounts/:id', authRequired, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Only super admin can delete accounts
+    if (req.user.role !== 'admin' || req.user.parentAccountId) {
+      return res.status(403).json({ error: 'Only super admin can delete accounts' });
+    }
+
+    // Prevent deleting own account
+    if (id === req.user.accountId) {
+      return res.status(400).json({ error: 'Cannot delete your own account' });
+    }
+
+    // Check if account exists
+    const { rows: accountRows } = await query(
+      'SELECT id, email, company_name AS "companyName" FROM accounts WHERE id = $1',
+      [id]
+    );
+
+    if (!accountRows.length) {
+      return res.status(404).json({ error: 'Account not found' });
+    }
+
+    // Delete the account (cascades to related records)
+    await query('DELETE FROM accounts WHERE id = $1', [id]);
+
+    res.json({ message: 'Account deleted successfully', account: accountRows[0] });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

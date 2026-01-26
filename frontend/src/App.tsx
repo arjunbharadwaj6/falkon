@@ -35,10 +35,7 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
 
-            <Route
-              path="/"
-              element={token ? <Dashboard /> : <Landing />}
-            />
+            <Route path="/" element={token ? <Dashboard /> : <Landing />} />
             <Route
               path="/jobs"
               element={

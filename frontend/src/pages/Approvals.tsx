@@ -117,8 +117,12 @@ export const Approvals: React.FC = () => {
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Pending Approvals</h1>
-              <p className="text-gray-600 mt-1">Review and approve new account registrations</p>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Pending Approvals
+              </h1>
+              <p className="text-gray-600 mt-1">
+                Review and approve new account registrations
+              </p>
             </div>
             <button
               onClick={loadPending}
@@ -146,7 +150,9 @@ export const Approvals: React.FC = () => {
         ) : pending.length === 0 ? (
           <div className="bg-gray-50 border border-gray-200 rounded-xl p-12 text-center">
             <div className="text-5xl mb-4">✓</div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">All Clear!</h3>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              All Clear!
+            </h3>
             <p className="text-gray-600">No pending approvals at the moment.</p>
           </div>
         ) : (
@@ -155,29 +161,56 @@ export const Approvals: React.FC = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Company</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Email</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Username</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Role</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Requested</th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      Company
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      Email
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      Username
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      Role
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      Requested
+                    </th>
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {pending.map((acc) => (
-                    <tr key={acc.id} className="hover:bg-gray-50 transition-colors">
+                    <tr
+                      key={acc.id}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="font-medium text-gray-900">{acc.companyName}</div>
+                        <div className="font-medium text-gray-900">
+                          {acc.companyName}
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{acc.email}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{acc.username}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {acc.email}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {acc.username}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                           {acc.role}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {new Date(acc.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        {new Date(acc.createdAt).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right space-x-2">
                         <button
