@@ -39,11 +39,20 @@ router.post('/signup', async (req, res, next) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
+    
+    // Get super admin ID (account with no parent)
+    const superAdminResult = await query(
+      'SELECT id FROM accounts WHERE role = $1 AND parent_account_id IS NULL LIMIT 1',
+      ['admin']
+    );
+    const superAdminId = superAdminResult.rows.length ? superAdminResult.rows[0].id : null;
+
+    // New accounts are created as regular admins (under super admin)
     const insert = await query(
-      `INSERT INTO accounts (company_name, email, username, password_hash, role, is_approved)
-       VALUES ($1, $2, $3, $4, 'admin', false)
+      `INSERT INTO accounts (company_name, email, username, password_hash, role, is_approved, parent_account_id)
+       VALUES ($1, $2, $3, $4, 'admin', false, $5)
        RETURNING id, company_name AS "companyName", email, username, role, parent_account_id AS "parentAccountId", is_approved AS "isApproved", created_at`,
-      [companyName, email.toLowerCase(), username.toLowerCase(), passwordHash]
+      [companyName, email.toLowerCase(), username.toLowerCase(), passwordHash, superAdminId]
     );
 
     const account = insert.rows[0];
