@@ -10,6 +10,9 @@ let transporterConfigured = false;
 // Initialize transporter based on environment variables
 function initializeTransporter() {
   try {
+    const connectionTimeout = parseInt(process.env.EMAIL_CONNECTION_TIMEOUT || '10000');
+    const greetingTimeout = parseInt(process.env.EMAIL_GREETING_TIMEOUT || '10000');
+    const socketTimeout = parseInt(process.env.EMAIL_SOCKET_TIMEOUT || '10000');
     if (process.env.EMAIL_SERVICE === 'gmail') {
       if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
         console.warn('⚠ Gmail email service configured but credentials missing (EMAIL_USER, EMAIL_PASSWORD)');
@@ -22,6 +25,9 @@ function initializeTransporter() {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASSWORD,
         },
+        connectionTimeout,
+        greetingTimeout,
+        socketTimeout,
       });
       transporterConfigured = true;
       console.log('✓ Email transporter configured for Gmail');
@@ -44,6 +50,9 @@ function initializeTransporter() {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASSWORD,
         },
+        connectionTimeout,
+        greetingTimeout,
+        socketTimeout,
       });
       transporterConfigured = true;
       console.log(`✓ Email transporter configured for ${process.env.EMAIL_SERVICE || 'SMTP'}: ${host}:${port}`);
@@ -56,6 +65,9 @@ function initializeTransporter() {
           user: process.env.SMTP_USER,
           pass: process.env.SMTP_PASSWORD,
         } : undefined,
+        connectionTimeout,
+        greetingTimeout,
+        socketTimeout,
       });
       transporterConfigured = true;
       console.log(`✓ Email transporter configured for SMTP: ${process.env.SMTP_HOST}:${process.env.SMTP_PORT || 587}`);

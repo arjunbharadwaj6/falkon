@@ -9,8 +9,8 @@
 ### Deploy Steps (Docker Compose)
 
 1. Copy envs:
-	- Backend: create `backend/.env` from `backend/.env.example` and fill secrets.
-	- Frontend: create `frontend/.env` from `frontend/.env.example` and set `VITE_API_BASE_URL`.
+   - Backend: create `backend/.env` from `backend/.env.example` and fill secrets.
+   - Frontend: create `frontend/.env` from `frontend/.env.example` and set `VITE_API_BASE_URL`.
 2. Build and run:
 
 ```bash

@@ -63,15 +63,14 @@ router.post('/signup', async (req, res, next) => {
       // Continue even if token creation fails - user account is still created
     }
 
-    // Send admin approval email with link
-    try {
-      const apiUrl = process.env.API_PUBLIC_URL || `http://localhost:${process.env.PORT || 5000}`;
-      const approvalLink = `${apiUrl}/auth/approve-by-token?token=${approvalToken}`;
-      await sendAdminApprovalEmail(account.email, account.username, account.companyName, approvalLink);
-    } catch (emailError) {
-      console.error('Failed to send admin approval email:', emailError.message);
-      // Continue even if email fails - user account is still created
-    }
+    // Send admin approval email with link (async, do not block response)
+    const apiUrl = process.env.API_PUBLIC_URL || `http://localhost:${process.env.PORT || 5000}`;
+    const approvalLink = `${apiUrl}/auth/approve-by-token?token=${approvalToken}`;
+    Promise.resolve()
+      .then(() => sendAdminApprovalEmail(account.email, account.username, account.companyName, approvalLink))
+      .catch((emailError) => {
+        console.error('Failed to send admin approval email:', emailError.message);
+      });
 
     // Return response indicating account created, awaiting admin approval
     res.status(201).json({ 
