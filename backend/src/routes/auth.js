@@ -726,4 +726,34 @@ router.get('/approve-by-token', async (req, res) => {
   }
 });
 
+// List all accounts (super admin only)
+router.get('/accounts', authRequired, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'admin' || req.user.parentAccountId) {
+      return res.status(403).json({ error: 'Only super admin can view all accounts' });
+    }
+
+    const { rows } = await query(
+      `SELECT a.id,
+              a.company_name AS "companyName",
+              a.email,
+              a.username,
+              a.role,
+              a.is_approved AS "isApproved",
+              a.created_at AS "createdAt",
+              a.approved_at AS "approvedAt",
+              a.parent_account_id AS "parentAccountId",
+              a.created_by AS "createdBy",
+              creator.email AS "createdByEmail"
+       FROM accounts a
+       LEFT JOIN accounts creator ON creator.id = a.created_by
+       ORDER BY a.created_at DESC`
+    );
+
+    res.json({ accounts: rows });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;
