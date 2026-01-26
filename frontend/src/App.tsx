@@ -16,8 +16,7 @@ import { Landing } from "./pages/Landing";
 import { useAuth } from "./auth/AuthProvider";
 
 function App() {
-  const { token, account } = useAuth();
-  const isRecruiter = account?.role === "recruiter";
+  const { token } = useAuth();
 
   return (
     <BrowserRouter>
@@ -38,17 +37,7 @@ function App() {
 
             <Route
               path="/"
-              element={
-                token ? (
-                  isRecruiter ? (
-                    <Navigate to="/candidates" replace />
-                  ) : (
-                    <Dashboard />
-                  )
-                ) : (
-                  <Landing />
-                )
-              }
+              element={token ? <Dashboard /> : <Landing />}
             />
             <Route
               path="/jobs"
@@ -100,12 +89,7 @@ function App() {
             />
             <Route
               path="*"
-              element={
-                <Navigate
-                  to={token ? (isRecruiter ? "/candidates" : "/") : "/"}
-                  replace
-                />
-              }
+              element={<Navigate to={token ? "/" : "/"} replace />}
             />
           </Routes>
         </main>
