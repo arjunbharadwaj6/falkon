@@ -19,7 +19,12 @@ export const Sidebar: React.FC = () => {
         { path: "/", label: "Dashboard", icon: "📊" },
         { path: "/jobs", label: "Jobs", icon: "💼" },
         { path: "/candidates", label: "Candidates", icon: "👥" },
-        ...(isSuperAdmin ? [{ path: "/approvals", label: "Approvals", icon: "✅" }] : []),
+        ...(isSuperAdmin
+          ? [
+              { path: "/approvals", label: "Approvals", icon: "✅" },
+              { path: "/accounts", label: "Accounts", icon: "📇" },
+            ]
+          : []),
         { path: "/recruiters", label: "Team Members", icon: "🧑‍💼" },
         { path: "/profile", label: "Profile", icon: "⚙️" },
       ];

@@ -5,6 +5,7 @@ import { Jobs } from "./pages/Jobs";
 import { Candidates } from "./pages/Candidates";
 import { Recruiters } from "./pages/Recruiters";
 import { Approvals } from "./pages/Approvals";
+import { Accounts } from "./pages/Accounts";
 import { Profile } from "./pages/Profile";
 import { Login } from "./pages/Login";
 import { Signup } from "./pages/Signup";
@@ -78,6 +79,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={["admin"]}>
                   <Approvals />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/accounts"
+              element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <Accounts />
                 </ProtectedRoute>
               }
             />

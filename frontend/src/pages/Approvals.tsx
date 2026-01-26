@@ -99,7 +99,9 @@ export const Approvals: React.FC = () => {
     return (
       <div className="p-6">
         <h2 className="text-2xl font-bold">Approvals</h2>
-        <p className="text-sm text-gray-300 mt-2">Only the super admin can view this page.</p>
+        <p className="text-sm text-gray-300 mt-2">
+          Only the super admin can view this page.
+        </p>
       </div>
     );
   }
@@ -146,7 +148,9 @@ export const Approvals: React.FC = () => {
                   <td className="py-2 pr-4">{acc.email}</td>
                   <td className="py-2 pr-4">{acc.username}</td>
                   <td className="py-2 pr-4">{acc.role}</td>
-                  <td className="py-2 pr-4">{new Date(acc.createdAt).toLocaleString()}</td>
+                  <td className="py-2 pr-4">
+                    {new Date(acc.createdAt).toLocaleString()}
+                  </td>
                   <td className="py-2 pr-4 space-x-2">
                     <button
                       disabled={actionBusy === acc.id}
@@ -171,4 +175,4 @@ export const Approvals: React.FC = () => {
       )}
     </div>
   );
-}
+};
