@@ -1,3 +1,46 @@
+## Production Readiness
+
+- Hardened backend with security headers (Helmet), rate limiting, improved CORS (comma-separated origins), and proxy trust.
+- Idempotent migrations runner (`npm run migrate`) with tracking and safe re-runs.
+- Admin email-based approval flow: signup triggers an approval link to the admin; clicking the link activates the account.
+- Environment templates: backend `.env.example` and frontend `.env.example` set for production defaults.
+- Dockerfiles for backend and frontend, plus `docker-compose.yml` for local prod-like runs.
+
+### Deploy Steps (Docker Compose)
+
+1. Copy envs:
+	- Backend: create `backend/.env` from `backend/.env.example` and fill secrets.
+	- Frontend: create `frontend/.env` from `frontend/.env.example` and set `VITE_API_BASE_URL`.
+2. Build and run:
+
+```bash
+docker compose up --build -d
+```
+
+### Migrations
+
+Run migrations safely:
+
+```bash
+cd backend
+npm run migrate
+```
+
+### GitHub
+
+Repo is connected to GitHub remote (`origin`). Push changes:
+
+```bash
+git push origin main
+```
+
+### Important Env Vars
+
+- `API_PUBLIC_URL`: Public API base (used in approval links)
+- `ADMIN_EMAIL`: Where approval emails are sent
+- `CORS_ORIGIN`: Comma-separated origins (avoid `*` in production)
+- `JWT_SECRET`: Long random secret
+
 # ATS - Applicant Tracking System
 
 A modern, full-stack Applicant Tracking System built with React, TypeScript, Node.js, Express, and PostgreSQL.
