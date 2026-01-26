@@ -8,6 +8,7 @@ export const Sidebar: React.FC = () => {
   const { logout, account } = useAuth();
   const isRecruiter = account?.role === "recruiter";
 
+  const isSuperAdmin = account?.role === "admin" && !account?.parentAccountId;
   const navItems = isRecruiter
     ? [
         { path: "/jobs", label: "Jobs", icon: "💼" },
@@ -18,6 +19,7 @@ export const Sidebar: React.FC = () => {
         { path: "/", label: "Dashboard", icon: "📊" },
         { path: "/jobs", label: "Jobs", icon: "💼" },
         { path: "/candidates", label: "Candidates", icon: "👥" },
+        ...(isSuperAdmin ? [{ path: "/approvals", label: "Approvals", icon: "✅" }] : []),
         { path: "/recruiters", label: "Team Members", icon: "🧑‍💼" },
         { path: "/profile", label: "Profile", icon: "⚙️" },
       ];
