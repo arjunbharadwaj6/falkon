@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 
 export const Signup: React.FC = () => {
   const { signup } = useAuth();
-  const navigate = useNavigate();
 
   const [companyName, setCompanyName] = useState("");
   const [email, setEmail] = useState("");
