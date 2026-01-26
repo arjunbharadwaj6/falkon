@@ -1,16 +1,11 @@
 import pg from 'pg';
-import dns from 'dns';
-import { promisify } from 'util';
+import dns from 'dns/promises';
 import dotenv from 'dotenv';
 import { URL } from 'url';
 
 dotenv.config();
 
-// CRITICAL: Force IPv4-only at DNS level
-dns.setDefaultResultOrder('ipv4first');
-
 const { Pool } = pg;
-const resolve4 = promisify(dns.resolve4);
 
 let pool;
 let poolInitialized = false;
@@ -49,75 +44,53 @@ async function initializePool() {
 
     console.log(`🔗 Connecting to PostgreSQL: ${user}@${host}:${port}/${database}`);
 
-    let resolvedDbHost = host;
-    
-    // CRITICAL: Resolve to IPv4 ONLY - reject IPv6 entirely
-    try {
-      // Use resolve4 which only returns IPv4 addresses
-      const ipv4Addresses = await resolve4(host);
-      if (ipv4Addresses && ipv4Addresses.length > 0) {
-        resolvedDbHost = ipv4Addresses[0];
-        console.log(`✓ Resolved ${host} to IPv4: ${resolvedDbHost}`);
-      }
-    } catch (dnsErr) {
-      console.warn(`⚠ Could not resolve ${host} to IPv4: ${dnsErr.message}`);
-      console.warn(`  This likely means DNS is returning IPv6, which Render does not support.`);
-      
-      // Check if host is already an IP
-      if (/^\d+\.\d+\.\d+\.\d+$/.test(host)) {
-        console.log(`  Using provided IPv4 address: ${host}`);
-        resolvedDbHost = host;
-      } else {
-        throw new Error(`Failed to resolve ${host} to IPv4 address. Render requires IPv4 connectivity.`);
+    // Use the hostname directly to preserve SNI/endpoint requirements; no IP substitution
+    const addressCandidates = [{ address: host, family: 0 }];
+
+    let lastError;
+    for (const addr of addressCandidates) {
+      const targetHost = addr.address || host;
+      console.log(`⏳ Trying DB host ${targetHost} (hostname, preserves SNI)...`);
+      try {
+        const candidatePool = new Pool({
+          user,
+          password,
+          host: targetHost,
+          port,
+          database,
+          ssl: { rejectUnauthorized: false },
+          max: 20,
+          idleTimeoutMillis: 30000,
+          connectionTimeoutMillis: 15000,
+          statement_timeout: 15000,
+          query_timeout: 15000,
+          keepAlive: true,
+          keepAliveInitialDelayMillis: 10000,
+        });
+
+        candidatePool.on('error', (err) => {
+          console.error('❌ Pool error:', err.code, '-', err.message);
+        });
+
+        const client = await candidatePool.connect();
+        const result = await client.query('SELECT NOW()');
+        client.release();
+
+        pool = candidatePool;
+        poolInitialized = true;
+        console.log(`✅ Database connection verified at: ${result.rows[0].now}`);
+        console.log(`✓ Database pool initialized successfully using host ${targetHost}`);
+        lastError = null;
+        break;
+      } catch (err) {
+        lastError = err;
+        console.error(`✗ Failed to connect via ${targetHost}: ${err.message}`);
       }
     }
 
-    pool = new Pool({
-      user,
-      password,
-      host: resolvedDbHost,
-      port,
-      database,
-      ssl: { rejectUnauthorized: false }, // Railway requires SSL
-      // CRITICAL: Force IPv4 ONLY in lookup
-      lookup: (hostname, options, callback) => {
-        dns.resolve4(hostname, (err, addresses) => {
-          if (err) {
-            console.error(`DNS resolve4 failed for ${hostname}: ${err.message}`);
-            return callback(err);
-          }
-          if (!addresses || addresses.length === 0) {
-            return callback(new Error(`No IPv4 addresses found for ${hostname}`));
-          }
-          // Return first IPv4 address
-          callback(null, addresses[0], 4);
-        });
-      },
-      max: 20,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 15000,
-      statement_timeout: 15000,
-      query_timeout: 15000,
-      keepAlive: true,
-      keepAliveInitialDelayMillis: 10000,
-      // Disable IPv6
-      family: 4,
-    });
-
-    // Handle pool errors
-    pool.on('error', (err) => {
-      console.error('❌ Pool error:', err.code, '-', err.message);
-    });
-
-    // Test the connection immediately
-    console.log(`⏳ Testing database connection to ${resolvedDbHost}:${port}...`);
-    const client = await pool.connect();
-    const result = await client.query('SELECT NOW()');
-    client.release();
-    console.log(`✅ Database connection verified at: ${result.rows[0].now}`);
-
-    poolInitialized = true;
-    console.log('✓ Database pool initialized successfully (IPv4 only)');
+    if (lastError && !poolInitialized) {
+      throw lastError;
+    }
   } catch (error) {
     initializationError = error;
     console.error('❌ FATAL: Database pool initialization failed:', error.message);

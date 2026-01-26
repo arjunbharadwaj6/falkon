@@ -12,11 +12,13 @@ export const Signup: React.FC = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccess(null);
 
     if (password !== confirmPassword) {
       setError("Passwords do not match");
@@ -31,9 +33,12 @@ export const Signup: React.FC = () => {
     setLoading(true);
     try {
       await signup(companyName, email, username, password);
-      navigate("/", { replace: true });
+      setSuccess(
+        "Account created! Await admin approval. We'll email you once approved.",
+      );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Signup failed");
+      const errorMsg = err instanceof Error ? err.message : "Signup failed";
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -70,6 +75,12 @@ export const Signup: React.FC = () => {
           {error && (
             <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">
               {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="rounded-lg bg-green-50 border border-green-200 text-green-700 px-4 py-3 text-sm">
+              ✓ {success}
             </div>
           )}
 

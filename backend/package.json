@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "migrate": "node scripts/run-migrations.js"
   },
   "keywords": [
     "ats",
@@ -23,7 +24,10 @@
     "crypto": "^1.0.1",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
     "jsonwebtoken": "^9.0.2",
+    "helmet": "^7.1.0",
+    "morgan": "^1.10.0",
     "multer": "^2.0.2",
     "nodemailer": "^6.9.7",
     "pg": "^8.11.3"

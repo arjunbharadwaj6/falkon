@@ -9,6 +9,7 @@ type Account = {
   username?: string;
   role: Role;
   parentAccountId?: string | null;
+  isApproved?: boolean;
 };
 
 type AuthContextType = {
@@ -31,7 +32,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 async function authRequest(
   path: string,
   body: Record<string, unknown>,
-): Promise<{ token: string; account: Account }> {
+): Promise<{ token: string; account: Account; message?: string }> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -92,6 +93,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       username,
       password,
     });
+
+    // Account created but pending admin approval
+    if (!data.account.isApproved) {
+      throw new Error(
+        "Account created! Await admin approval to access all features.",
+      );
+    }
+
     persist(data.token, data.account);
   };
 
