@@ -95,21 +95,6 @@ export const Approvals: React.FC = () => {
     }
   };
 
-  if (!isSuperAdmin) {
-    return (
-      <div className="min-h-screen bg-white p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-8 text-center">
-            <h2 className="text-2xl font-bold text-gray-900">Approvals</h2>
-            <p className="text-sm text-gray-600 mt-2">
-              Only the super admin can view this page.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-white p-8">
       <div className="max-w-7xl mx-auto">

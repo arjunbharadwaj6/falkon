@@ -61,10 +61,14 @@ export const Accounts: React.FC = () => {
   }, [isSuperAdmin]);
 
   const deleteAccount = async (id: string, email: string) => {
-    if (!confirm(`Are you sure you want to delete the account for ${email}? This action cannot be undone.`)) {
+    if (
+      !confirm(
+        `Are you sure you want to delete the account for ${email}? This action cannot be undone.`,
+      )
+    ) {
       return;
     }
-    
+
     setDeletingId(id);
     setError(null);
     try {
@@ -93,21 +97,6 @@ export const Accounts: React.FC = () => {
     const matchesPending = filter.onlyPending ? !it.isApproved : true;
     return matchesSearch && matchesPending;
   });
-
-  if (!isSuperAdmin) {
-    return (
-      <div className="min-h-screen bg-white p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-8 text-center">
-            <h2 className="text-2xl font-bold text-gray-900">Accounts</h2>
-            <p className="text-sm text-gray-600 mt-2">
-              Only the super admin can view this page.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-white p-8">
