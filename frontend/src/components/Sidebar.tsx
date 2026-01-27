@@ -16,17 +16,17 @@ export const Sidebar: React.FC = () => {
         { path: "/profile", label: "Profile", icon: "⚙️" },
       ]
     : isSuperAdmin
-    ? [
-        { path: "/approvals", label: "Approvals", icon: "✅" },
-        { path: "/accounts", label: "Accounts", icon: "📇" },
-      ]
-    : [
-        { path: "/", label: "Dashboard", icon: "📊" },
-        { path: "/jobs", label: "Jobs", icon: "💼" },
-        { path: "/candidates", label: "Candidates", icon: "👥" },
-        { path: "/recruiters", label: "Team Members", icon: "🧑‍💼" },
-        { path: "/profile", label: "Profile", icon: "⚙️" },
-      ];
+      ? [
+          { path: "/approvals", label: "Approvals", icon: "✅" },
+          { path: "/accounts", label: "Accounts", icon: "📇" },
+        ]
+      : [
+          { path: "/", label: "Dashboard", icon: "📊" },
+          { path: "/jobs", label: "Jobs", icon: "💼" },
+          { path: "/candidates", label: "Candidates", icon: "👥" },
+          { path: "/recruiters", label: "Team Members", icon: "🧑‍💼" },
+          { path: "/profile", label: "Profile", icon: "⚙️" },
+        ];
 
   const isActive = (path: string) => location.pathname === path;
 
