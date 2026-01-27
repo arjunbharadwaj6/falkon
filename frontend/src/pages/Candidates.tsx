@@ -777,7 +777,7 @@ export const Candidates: React.FC = () => {
                 </td>
               </tr>
             ) : (
-              paginatedCandidates.map((candidate, idx) => (
+              paginatedCandidates.map((candidate) => (
                 <tr
                   key={candidate.id}
                   className="hover:bg-blue-50/40 transition-colors"

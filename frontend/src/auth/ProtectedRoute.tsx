@@ -3,7 +3,7 @@ import { useAuth } from "./AuthProvider";
 
 type ProtectedRouteProps = {
   children: React.ReactNode;
-  allowedRoles?: Array<"admin" | "recruiter">;
+  allowedRoles?: Array<"admin" | "recruiter" | "partner">;
   superAdminOnly?: boolean;
 };
 
