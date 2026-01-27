@@ -4,7 +4,11 @@ import { authRequired } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Get all job positions for the current admin
+/**
+ * GET /job-positions - Retrieve all job positions for the current admin
+ * Requires: Authentication
+ * Returns: Array of job positions ordered by name
+ */
 router.get('/job-positions', authRequired, async (req, res, next) => {
   try {
     const accountId = req.user.parentAccountId || req.user.accountId;
@@ -23,7 +27,12 @@ router.get('/job-positions', authRequired, async (req, res, next) => {
   }
 });
 
-// Create a new job position (admin only)
+/**
+ * POST /job-positions - Create a new job position
+ * Requires: Authentication + Admin role
+ * Body: { name, description? }
+ * Returns: Created position object or error
+ */
 router.post('/job-positions', authRequired, async (req, res, next) => {
   try {
     if (req.user.role !== 'admin') {
@@ -59,7 +68,12 @@ router.post('/job-positions', authRequired, async (req, res, next) => {
   }
 });
 
-// Update a job position (admin only)
+/**
+ * PUT /job-positions/:id - Update a job position
+ * Requires: Authentication + Admin role
+ * Body: { name, description? }
+ * Returns: Updated position object or error
+ */
 router.put('/job-positions/:id', authRequired, async (req, res, next) => {
   try {
     if (req.user.role !== 'admin') {
@@ -107,7 +121,11 @@ router.put('/job-positions/:id', authRequired, async (req, res, next) => {
   }
 });
 
-// Delete a job position (admin only)
+/**
+ * DELETE /job-positions/:id - Delete a job position
+ * Requires: Authentication + Admin role
+ * Returns: Success message or error if position is in use
+ */
 router.delete('/job-positions/:id', authRequired, async (req, res, next) => {
   try {
     if (req.user.role !== 'admin') {

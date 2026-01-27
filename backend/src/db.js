@@ -1,5 +1,4 @@
 import pg from 'pg';
-import dns from 'dns/promises';
 import dotenv from 'dotenv';
 import { URL } from 'url';
 
@@ -11,7 +10,10 @@ let pool;
 let poolInitialized = false;
 let initializationError = null;
 
-// Parse DATABASE_URL into pool config
+/**
+ * Parse DATABASE_URL environment variable into PostgreSQL connection config
+ * @returns {Object} Pool configuration with user, password, host, port, database
+ */
 function parseDatabaseUrl() {
   const databaseUrl = process.env.DATABASE_URL;
   
@@ -26,14 +28,17 @@ function parseDatabaseUrl() {
       password: url.password,
       host: url.hostname,
       port: parseInt(url.port || '5432'),
-      database: url.pathname.slice(1), // Remove leading /
+      database: url.pathname.slice(1),
     };
   } catch (error) {
     throw new Error(`Invalid DATABASE_URL format: ${error.message}`);
   }
 }
 
-// Initialize pool with GUARANTEED IPv4-only connections
+/**
+ * Initialize connection pool to PostgreSQL database
+ * Establishes connection and verifies with a test query
+ */
 async function initializePool() {
   if (poolInitialized) return;
   if (initializationError) throw initializationError;
@@ -44,69 +49,52 @@ async function initializePool() {
 
     console.log(`🔗 Connecting to PostgreSQL: ${user}@${host}:${port}/${database}`);
 
-    // Use the hostname directly to preserve SNI/endpoint requirements; no IP substitution
-    const addressCandidates = [{ address: host, family: 0 }];
+    try {
+      const candidatePool = new Pool({
+        user,
+        password,
+        host,
+        port,
+        database,
+        ssl: { rejectUnauthorized: false },
+        max: 20,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 15000,
+        statement_timeout: 15000,
+        query_timeout: 15000,
+        keepAlive: true,
+        keepAliveInitialDelayMillis: 10000,
+      });
 
-    let lastError;
-    for (const addr of addressCandidates) {
-      const targetHost = addr.address || host;
-      console.log(`⏳ Trying DB host ${targetHost} (hostname, preserves SNI)...`);
-      try {
-        const candidatePool = new Pool({
-          user,
-          password,
-          host: targetHost,
-          port,
-          database,
-          ssl: { rejectUnauthorized: false },
-          max: 20,
-          idleTimeoutMillis: 30000,
-          connectionTimeoutMillis: 15000,
-          statement_timeout: 15000,
-          query_timeout: 15000,
-          keepAlive: true,
-          keepAliveInitialDelayMillis: 10000,
-        });
+      candidatePool.on('error', (err) => {
+        console.error('❌ Pool error:', err.code, '-', err.message);
+      });
 
-        candidatePool.on('error', (err) => {
-          console.error('❌ Pool error:', err.code, '-', err.message);
-        });
+      const client = await candidatePool.connect();
+      const result = await client.query('SELECT NOW()');
+      client.release();
 
-        const client = await candidatePool.connect();
-        const result = await client.query('SELECT NOW()');
-        client.release();
-
-        pool = candidatePool;
-        poolInitialized = true;
-        console.log(`✅ Database connection verified at: ${result.rows[0].now}`);
-        console.log(`✓ Database pool initialized successfully using host ${targetHost}`);
-        lastError = null;
-        break;
-      } catch (err) {
-        lastError = err;
-        console.error(`✗ Failed to connect via ${targetHost}: ${err.message}`);
-      }
-    }
-
-    if (lastError && !poolInitialized) {
-      throw lastError;
+      pool = candidatePool;
+      poolInitialized = true;
+      console.log(`✅ Database connection verified at: ${result.rows[0].now}`);
+      console.log(`✓ Database pool initialized successfully`);
+    } catch (err) {
+      console.error(`✗ Failed to connect: ${err.message}`);
+      throw err;
     }
   } catch (error) {
     initializationError = error;
-    console.error('❌ FATAL: Database pool initialization failed:', error.message);
-    console.error('Check your DATABASE environment variables:');
-    console.error(`  DB_HOST: ${process.env.DB_HOST}`);
-    console.error(`  DB_PORT: ${process.env.DB_PORT}`);
-    console.error(`  DB_USER: ${process.env.DB_USER}`);
-    console.error(`  DB_SSL: ${process.env.DB_SSL}`);
+    console.error('❌ Database pool initialization failed:', error.message);
     process.exit(1);
   }
 }
 
-// Initialize pool immediately at module load
 await initializePool();
 
-// Get pool with safety check
+/**
+ * Get the initialized connection pool
+ * @returns {Pool} PostgreSQL connection pool
+ */
 function getPool() {
   if (!pool || !poolInitialized) {
     throw new Error('Database pool not initialized');
@@ -115,8 +103,10 @@ function getPool() {
 }
 
 
-
-// Test database connection
+/**
+ * Test database connection
+ * @returns {boolean} True if connection successful
+ */
 export const testConnection = async () => {
   try {
     const pool = getPool();
@@ -131,7 +121,10 @@ export const testConnection = async () => {
   }
 };
 
-// Ensure critical columns exist (idempotent) to avoid runtime errors
+/**
+ * Ensure database schema exists with all required columns and tables
+ * Handles type migrations and creates missing extensions/tables
+ */
 export const ensureSchema = async () => {
   const pool = getPool();
   const client = await pool.connect();
@@ -140,7 +133,7 @@ export const ensureSchema = async () => {
 
     await client.query('CREATE EXTENSION IF NOT EXISTS "pgcrypto";');
 
-    // Roles and tenancy fields (UUID-aligned)
+    // Add role and tenancy columns
     await client.query(`
       ALTER TABLE accounts
         ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'admin' CHECK (role IN ('admin','recruiter')),
@@ -148,7 +141,7 @@ export const ensureSchema = async () => {
         ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES accounts(id) ON DELETE SET NULL;
     `);
 
-    // Ensure correct types if columns already exist but with wrong type
+    // Ensure columns have correct types
     await client.query(`
       DO $$
       BEGIN
@@ -169,6 +162,7 @@ export const ensureSchema = async () => {
 
     await client.query(`UPDATE accounts SET role = 'admin' WHERE role IS NULL;`);
 
+    // Add candidate tracking columns
     await client.query(`
       ALTER TABLE candidates
         ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES accounts(id) ON DELETE SET NULL,
@@ -195,6 +189,7 @@ export const ensureSchema = async () => {
 
     await client.query(`UPDATE candidates SET created_by = account_id WHERE created_by IS NULL;`);
 
+    // Create jobs table if not exists
     await client.query(`
       CREATE TABLE IF NOT EXISTS jobs (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -218,7 +213,7 @@ export const ensureSchema = async () => {
     await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_job_code ON jobs(job_code);`);
 
     await client.query('COMMIT');
-    console.log('✓ Schema ensured (roles, parent linkage, created_by, jobs)');
+    console.log('✓ Schema ensured successfully');
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Schema ensure failed:', error.message);
@@ -228,7 +223,13 @@ export const ensureSchema = async () => {
   }
 };
 
-// Query helper function with error handling and retry logic
+/**
+ * Execute query with automatic retry on connection errors
+ * @param {string} text - SQL query string
+ * @param {array} params - Query parameters
+ * @param {number} retries - Number of retry attempts (default: 2)
+ * @returns {Object} Query result
+ */
 export const query = async (text, params, retries = 2) => {
   const pool = getPool();
   const start = Date.now();
@@ -243,7 +244,7 @@ export const query = async (text, params, retries = 2) => {
     } catch (error) {
       lastError = error;
       
-      // Check if it's a connection error that might be retryable
+      // Check if error is connection-related and retryable
       const isConnectionError = error.message.includes('Connection') || 
                                error.message.includes('timeout') ||
                                error.code === 'ECONNRESET' ||
@@ -251,12 +252,11 @@ export const query = async (text, params, retries = 2) => {
       
       if (isConnectionError && attempt < retries) {
         console.warn(`Database query failed (attempt ${attempt + 1}/${retries + 1}), retrying...`);
-        // Wait a bit before retrying (exponential backoff)
+        // Exponential backoff before retry
         await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
         continue;
       }
       
-      // If it's not retryable or we've exhausted retries, throw the error
       console.error('Database query error:', error.message);
       throw error;
     }
@@ -265,7 +265,10 @@ export const query = async (text, params, retries = 2) => {
   throw lastError;
 };
 
-// Get a client from the pool for transactions
+/**
+ * Get a client from the pool for manual transaction control
+ * @returns {Object} Database client
+ */
 export const getClient = async () => {
   try {
     const pool = getPool();
@@ -277,7 +280,10 @@ export const getClient = async () => {
   }
 };
 
-// Check if the database connection is healthy
+/**
+ * Check if database connection is healthy
+ * @returns {boolean} True if database is accessible
+ */
 export const isHealthy = async () => {
   try {
     const pool = getPool();
@@ -291,7 +297,9 @@ export const isHealthy = async () => {
   }
 };
 
-// Graceful shutdown
+/**
+ * Gracefully close database connection pool
+ */
 export const closePool = async () => {
   try {
     if (pool) {

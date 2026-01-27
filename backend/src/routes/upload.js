@@ -10,13 +10,13 @@ const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
-// Create uploads directory if it doesn't exist
+// Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, '../../uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Configure multer for file upload
+// Configure multer for resume uploads (PDF files only, max 5MB)
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadsDir);
@@ -28,10 +28,8 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
-  },
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['application/pdf'];
     if (allowedTypes.includes(file.mimetype)) {
@@ -42,7 +40,11 @@ const upload = multer({
   }
 });
 
-// Upload resume endpoint
+/**
+ * POST /upload - Upload a resume file
+ * Requires: Authentication, file in 'resume' field
+ * Returns: File URL, original filename, and size
+ */
 router.post('/upload', authRequired, upload.single('resume'), (req, res, next) => {
   try {
     if (!req.file) {
@@ -61,7 +63,11 @@ router.post('/upload', authRequired, upload.single('resume'), (req, res, next) =
   }
 });
 
-// Delete resume endpoint
+/**
+ * DELETE /:filename - Delete a resume file
+ * Requires: Authentication
+ * Returns: Success message or 404 if file not found
+ */
 router.delete('/:filename', authRequired, (req, res, next) => {
   try {
     const { filename } = req.params;

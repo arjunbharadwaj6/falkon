@@ -32,7 +32,6 @@ export const Sidebar: React.FC = () => {
 
   return (
     <div className="w-56 bg-blue-900 text-white h-screen fixed left-0 top-0 shadow-lg">
-      {/* Logo Section */}
       <div className="p-4 border-b border-blue-800">
         <h1 className="text-xl font-bold flex items-center gap-3">
           <img
@@ -45,7 +44,6 @@ export const Sidebar: React.FC = () => {
         <p className="text-xs text-blue-200 mt-1">Recruitment platform</p>
       </div>
 
-      {/* Navigation Items */}
       <nav className="p-3 mt-4">
         {navItems.map((item) => (
           <Link
@@ -63,7 +61,6 @@ export const Sidebar: React.FC = () => {
         ))}
       </nav>
 
-      {/* Footer */}
       <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-blue-800 space-y-2">
         <div className="bg-blue-800 rounded-lg p-2">
           <p className="text-xs text-blue-200 mb-1">Logged in as</p>
