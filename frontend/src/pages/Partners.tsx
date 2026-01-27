@@ -102,7 +102,7 @@ export const Partners: React.FC = () => {
     setStatus(null);
     try {
       const res = await fetch(
-        `${API_BASE}/auth/partners/${resetTarget.id}/password`,
+        `${API_BASE}/auth/recruiters/${resetTarget.id}/password`,
         {
           method: "PUT",
           headers: {
@@ -144,7 +144,7 @@ export const Partners: React.FC = () => {
     setSubmitting(true);
     setStatus(null);
     try {
-      const res = await fetch(`${API_BASE}/auth/partners`, {
+      const res = await fetch(`${API_BASE}/auth/recruiters`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -311,8 +311,8 @@ export const Partners: React.FC = () => {
             <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
               <div className="text-sm text-gray-600">
                 Showing {startIndex + 1} to{" "}
-                {Math.min(endIndex, partners.length)} of {partners.length}{" "}
-                team members
+                {Math.min(endIndex, partners.length)} of {partners.length} team
+                members
               </div>
               <div className="flex items-center gap-2">
                 <button
