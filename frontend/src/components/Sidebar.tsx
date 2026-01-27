@@ -7,9 +7,10 @@ export const Sidebar: React.FC = () => {
   const location = useLocation();
   const { logout, account } = useAuth();
   const isRecruiter = account?.role === "recruiter";
+  const isPartner = account?.role === "partner";
 
   const isSuperAdmin = account?.role === "admin" && !account?.parentAccountId;
-  const navItems = isRecruiter
+  const navItems = isRecruiter || isPartner
     ? [
         { path: "/jobs", label: "Jobs", icon: "💼" },
         { path: "/candidates", label: "Candidates", icon: "👥" },
@@ -25,6 +26,7 @@ export const Sidebar: React.FC = () => {
           { path: "/jobs", label: "Jobs", icon: "💼" },
           { path: "/candidates", label: "Candidates", icon: "👥" },
           { path: "/recruiters", label: "Team Members", icon: "🧑‍💼" },
+          { path: "/partners", label: "Partners", icon: "🤝" },
           { path: "/profile", label: "Profile", icon: "⚙️" },
         ];
 

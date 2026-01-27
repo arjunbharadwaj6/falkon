@@ -146,9 +146,9 @@ router.put('/profile', authRequired, async (req, res, next) => {
       return res.status(400).json({ error: 'username is required' });
     }
 
-    // Recruiters cannot change company name
+    // Recruiters and partners cannot change company name
     let nextCompanyName = companyName;
-    if (req.user.role === 'recruiter') {
+    if (req.user.role === 'recruiter' || req.user.role === 'partner') {
       const current = await query('SELECT company_name FROM accounts WHERE id = $1', [accountId]);
       if (!current.rows.length) {
         return res.status(404).json({ error: 'account not found' });
@@ -223,12 +223,35 @@ router.get('/recruiters', authRequired, async (req, res, next) => {
     const { rows } = await query(
       `SELECT id, company_name AS "companyName", email, username, role, parent_account_id AS "parentAccountId", created_at AS "createdAt"
        FROM accounts
-       WHERE (role = 'recruiter' OR role = 'admin') AND parent_account_id = $1
+       WHERE (role = 'recruiter' OR role = 'admin' OR role = 'partner') AND parent_account_id = $1
        ORDER BY created_at DESC`,
       [req.user.accountId]
     );
 
     res.json({ recruiters: rows });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /auth/partners - Get all partners for current admin
+ */
+router.get('/partners', authRequired, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Only admins can list partners' });
+    }
+
+    const { rows } = await query(
+      `SELECT id, company_name AS "companyName", email, username, role, parent_account_id AS "parentAccountId", created_at AS "createdAt"
+       FROM accounts
+       WHERE role = 'partner' AND parent_account_id = $1
+       ORDER BY created_at DESC`,
+      [req.user.accountId]
+    );
+
+    res.json({ partners: rows });
   } catch (error) {
     next(error);
   }
@@ -269,8 +292,8 @@ router.post('/recruiters', authRequired, async (req, res, next) => {
       return res.status(400).json({ error: 'email, username, and password are required' });
     }
 
-    if (!['recruiter', 'admin'].includes(role)) {
-      return res.status(400).json({ error: 'role must be recruiter or admin' });
+    if (!['recruiter', 'admin', 'partner'].includes(role)) {
+      return res.status(400).json({ error: 'role must be recruiter, admin, or partner' });
     }
 
     const existing = await query('SELECT id FROM accounts WHERE email = $1 OR username = $2', [email.toLowerCase(), username.toLowerCase()]);
@@ -310,14 +333,14 @@ router.put('/recruiters/:id/password', authRequired, async (req, res, next) => {
       return res.status(400).json({ error: 'newPassword must be at least 8 characters' });
     }
 
-    // Ensure target is a recruiter under this admin
+    // Ensure target is a team member under this admin
     const target = await query(
-      'SELECT id FROM accounts WHERE id = $1 AND role = $2 AND parent_account_id = $3',
-      [id, 'recruiter', req.user.accountId]
+      'SELECT id FROM accounts WHERE id = $1 AND role IN ($2, $3) AND parent_account_id = $4',
+      [id, 'recruiter', 'partner', req.user.accountId]
     );
 
     if (!target.rows.length) {
-      return res.status(404).json({ error: 'recruiter not found' });
+      return res.status(404).json({ error: 'team member not found' });
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 10);

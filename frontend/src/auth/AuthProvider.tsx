@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-type Role = "admin" | "recruiter";
+type Role = "admin" | "recruiter" | "partner";
 
 type Account = {
   id: string;

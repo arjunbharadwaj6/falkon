@@ -4,6 +4,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { Jobs } from "./pages/Jobs";
 import { Candidates } from "./pages/Candidates";
 import { Recruiters } from "./pages/Recruiters";
+import { Partners } from "./pages/Partners";
 import { Approvals } from "./pages/Approvals";
 import { Accounts } from "./pages/Accounts";
 import { Profile } from "./pages/Profile";
@@ -39,7 +40,7 @@ function App() {
             <Route
               path="/jobs"
               element={
-                <ProtectedRoute allowedRoles={["admin", "recruiter"]}>
+                <ProtectedRoute allowedRoles={["admin", "recruiter", "partner"]}>
                   <Jobs />
                 </ProtectedRoute>
               }
@@ -47,7 +48,7 @@ function App() {
             <Route
               path="/candidates"
               element={
-                <ProtectedRoute allowedRoles={["admin", "recruiter"]}>
+                <ProtectedRoute allowedRoles={["admin", "recruiter", "partner"]}>
                   <Candidates />
                 </ProtectedRoute>
               }
@@ -57,6 +58,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={["admin"]}>
                   <Recruiters />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/partners"
+              element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <Partners />
                 </ProtectedRoute>
               }
             />
@@ -79,7 +88,7 @@ function App() {
             <Route
               path="/profile"
               element={
-                <ProtectedRoute allowedRoles={["admin", "recruiter"]}>
+                <ProtectedRoute allowedRoles={["admin", "recruiter", "partner"]}>
                   <Profile />
                 </ProtectedRoute>
               }

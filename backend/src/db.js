@@ -136,7 +136,7 @@ export const ensureSchema = async () => {
     // Add role and tenancy columns
     await client.query(`
       ALTER TABLE accounts
-        ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'admin' CHECK (role IN ('admin','recruiter')),
+        ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'admin' CHECK (role IN ('admin','recruiter','partner')),
         ADD COLUMN IF NOT EXISTS parent_account_id UUID REFERENCES accounts(id) ON DELETE CASCADE,
         ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES accounts(id) ON DELETE SET NULL;
     `);
