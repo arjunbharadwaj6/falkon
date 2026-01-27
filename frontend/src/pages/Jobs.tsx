@@ -683,7 +683,7 @@ export const Jobs: React.FC = () => {
           {!isAdmin && (
             <div className="inline-flex items-center gap-3 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-5 py-3 shadow-sm">
               <span>ℹ️</span>
-              <span>Recruiters have read-only access</span>
+              <span>Recruiters and partners have read-only access</span>
             </div>
           )}
         </div>

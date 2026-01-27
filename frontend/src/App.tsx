@@ -14,6 +14,7 @@ import { ForgotPassword } from "./pages/ForgotPassword";
 import { ResetPassword } from "./pages/ResetPassword";
 import { ProtectedRoute } from "./auth/ProtectedRoute";
 import { Landing } from "./pages/Landing";
+import { Reports } from "./pages/Reports";
 import { useAuth } from "./auth/AuthProvider";
 
 function App() {
@@ -70,6 +71,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={["admin"]}>
                   <Partners />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reports"
+              element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <Reports />
                 </ProtectedRoute>
               }
             />

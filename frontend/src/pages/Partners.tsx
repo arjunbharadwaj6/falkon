@@ -78,7 +78,6 @@ export const Partners: React.FC = () => {
     setEmail("");
     setUsername("");
     setPassword("");
-    setRole("partner");
     setStatus(null);
     setShowAddModal(true);
   };
@@ -88,7 +87,6 @@ export const Partners: React.FC = () => {
     setEmail("");
     setUsername("");
     setPassword("");
-    setRole("partner");
     setStatus(null);
   };
 
@@ -138,7 +136,9 @@ export const Partners: React.FC = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleCreate = async (
+    e: React.FormEvent | React.MouseEvent<HTMLButtonElement>,
+  ) => {
     e.preventDefault();
     if (!token) return;
     setSubmitting(true);
@@ -164,17 +164,20 @@ export const Partners: React.FC = () => {
         throw new Error(err.error || `Failed (${res.status})`);
       }
 
-      setStatus("Team member created successfully.");
+      const data = await res.json();
+      setStatus(
+        data.message ||
+          "Partner created successfully! Awaiting super admin approval.",
+      );
       setEmail("");
       setUsername("");
       setPassword("");
-      setRole("partner");
       setCompanyName(account?.companyName || "");
       closeAddModal();
       fetchpartners();
     } catch (err) {
       setStatus(
-        err instanceof Error ? err.message : "Failed to create team member",
+        err instanceof Error ? err.message : "Failed to create partner",
       );
     } finally {
       setSubmitting(false);
@@ -214,9 +217,7 @@ export const Partners: React.FC = () => {
           <div className="px-8 py-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">
-                  Partners
-                </h2>
+                <h2 className="text-xl font-bold text-gray-900">Partners</h2>
                 <p className="text-xs text-gray-600 mt-1">
                   View and manage all partners
                 </p>
@@ -259,11 +260,9 @@ export const Partners: React.FC = () => {
                     >
                       <div className="flex flex-col items-center gap-2">
                         <span className="text-4xl">👥</span>
-                        <p className="font-medium text-sm">
-                          No team members yet
-                        </p>
+                        <p className="font-medium text-sm">No partners yet</p>
                         <p className="text-xs">
-                          Click "Add Team Member" to get started
+                          Click "Add Partner" to get started
                         </p>
                       </div>
                     </td>
@@ -311,8 +310,8 @@ export const Partners: React.FC = () => {
             <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
               <div className="text-sm text-gray-600">
                 Showing {startIndex + 1} to{" "}
-                {Math.min(endIndex, partners.length)} of {partners.length} team
-                members
+                {Math.min(endIndex, partners.length)} of {partners.length}{" "}
+                partners
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -351,7 +350,7 @@ export const Partners: React.FC = () => {
           )}
         </div>
 
-        {/* Add Team Member Modal */}
+        {/* Add Partner Modal */}
         {showAddModal && (
           <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50 p-4">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -444,7 +443,7 @@ export const Partners: React.FC = () => {
                   onClick={handleCreate}
                   className="px-6 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-sm text-white font-semibold hover:from-blue-700 hover:to-indigo-700 disabled:opacity-60 transition-all shadow-lg hover:shadow-xl"
                 >
-                  {submitting ? "Creating..." : "Create Team Member"}
+                  {submitting ? "Creating..." : "Create Partner"}
                 </button>
               </div>
             </div>

@@ -116,7 +116,7 @@ export const Candidates: React.FC = () => {
   const [selected, setSelected] = useState<Candidate | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const { token, account } = useAuth();
-  const isRecruiter = account?.role === "recruiter";
+  const isStaff = account?.role === "recruiter" || account?.role === "partner";
   const [stats, setStats] = useState({
     total: 0,
     accepted: 0,
@@ -145,6 +145,17 @@ export const Candidates: React.FC = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [jobPositions, setJobPositions] = useState<JobPosition[]>([]);
+  const [filters, setFilters] = useState({
+    search: "",
+    jobPositionId: "",
+    jobId: "",
+    profileStatus: "",
+    visaStatus: "",
+    location: "",
+    minExperience: "",
+    maxExperience: "",
+  });
+  const [filtersOpen, setFiltersOpen] = useState(true);
 
   const apiHeaders = useMemo(
     () => ({
@@ -234,6 +245,10 @@ export const Candidates: React.FC = () => {
       fetchJobPositions();
     }
   }, [token]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters]);
 
   const resetForm = () => {
     setForm({
@@ -405,11 +420,86 @@ export const Candidates: React.FC = () => {
     setShowViewModal(true);
   };
 
-  // Pagination
-  const totalPages = Math.ceil(candidates.length / itemsPerPage);
+  const filteredCandidates = useMemo(() => {
+    const searchTerm = filters.search.trim().toLowerCase();
+    const minExpValue =
+      filters.minExperience !== "" ? Number(filters.minExperience) : null;
+    const maxExpValue =
+      filters.maxExperience !== "" ? Number(filters.maxExperience) : null;
+    const minExp = Number.isNaN(minExpValue) ? null : minExpValue;
+    const maxExp = Number.isNaN(maxExpValue) ? null : maxExpValue;
+
+    return candidates.filter((candidate) => {
+      if (searchTerm) {
+        const haystack = [
+          candidate.name,
+          candidate.email,
+          candidate.phone,
+          candidate.location,
+          candidate.linkedinUrl,
+          candidate.resumeUrl,
+        ]
+          .filter(Boolean)
+          .map((v) => String(v).toLowerCase())
+          .join(" ");
+
+        if (!haystack.includes(searchTerm)) return false;
+      }
+
+      if (filters.location) {
+        const loc = candidate.location?.toLowerCase() || "";
+        if (!loc.includes(filters.location.trim().toLowerCase())) return false;
+      }
+
+      if (
+        filters.profileStatus &&
+        candidate.profileStatus !== filters.profileStatus
+      ) {
+        return false;
+      }
+
+      if (filters.visaStatus && candidate.visaStatus !== filters.visaStatus) {
+        return false;
+      }
+
+      if (
+        filters.jobPositionId &&
+        candidate.jobPositionId !== filters.jobPositionId
+      ) {
+        return false;
+      }
+
+      if (filters.jobId && candidate.jobId !== filters.jobId) {
+        return false;
+      }
+
+      if (minExp !== null) {
+        const exp = candidate.experience ?? -1;
+        if (exp < minExp) return false;
+      }
+
+      if (maxExp !== null) {
+        const exp = candidate.experience ?? Number.MAX_SAFE_INTEGER;
+        if (exp > maxExp) return false;
+      }
+
+      return true;
+    });
+  }, [candidates, filters]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredCandidates.length / itemsPerPage),
+  );
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedCandidates = candidates.slice(startIndex, endIndex);
+  const paginatedCandidates = filteredCandidates.slice(startIndex, endIndex);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   const goToPage = (page: number) => {
     setCurrentPage(page);
@@ -417,11 +507,19 @@ export const Candidates: React.FC = () => {
   };
 
   return (
-    <div className="p-8 space-y-6 text-slate-900 bg-gray-50 min-h-screen">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 px-6 py-10 md:px-12 lg:px-16 space-y-8 text-slate-900">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <h1 className="text-3xl font-bold text-slate-900">Candidates</h1>
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            Candidates
+          </h1>
+          <p className="text-sm text-slate-600">
+            Track and manage your pipeline with quick filters and richer
+            context.
+          </p>
+        </div>
         <button
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/30"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md shadow-blue-500/30"
           onClick={() => {
             resetForm();
             setShowModal(true);
@@ -431,7 +529,7 @@ export const Candidates: React.FC = () => {
         </button>
       </div>
 
-      {isRecruiter && (
+      {isStaff && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard label="Added" value={stats.total} tone="blue" />
           <StatCard label="Accepted" value={stats.accepted} tone="emerald" />
@@ -448,15 +546,194 @@ export const Candidates: React.FC = () => {
 
       {/* Details card removed in favor of modal view */}
 
-      <div className="bg-white border border-gray-200 rounded-lg shadow-lg shadow-gray-200/70 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900">
+      <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-2xl shadow-lg shadow-gray-200/70 p-5 md:p-6 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-blue-700 text-sm font-bold">
+                F
+              </span>
+              Filters
+            </h3>
+            <button
+              type="button"
+              className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+              onClick={() => setFiltersOpen((v) => !v)}
+            >
+              {filtersOpen ? "Hide" : "Show"}
+            </button>
+          </div>
+          {filtersOpen && (
+            <button
+              type="button"
+              className="text-sm text-blue-600 hover:text-blue-700 font-semibold"
+              onClick={() =>
+                setFilters({
+                  search: "",
+                  jobPositionId: "",
+                  jobId: "",
+                  profileStatus: "",
+                  visaStatus: "",
+                  location: "",
+                  minExperience: "",
+                  maxExperience: "",
+                })
+              }
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
+        {filtersOpen && (
+          <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-gray-700">
+                Search (name, email, phone, links)
+              </label>
+              <input
+                type="text"
+                value={filters.search}
+                onChange={(e) =>
+                  setFilters({ ...filters, search: e.target.value })
+                }
+                placeholder="e.g., Jane, 555, linkedin"
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-gray-700">
+                Job Position
+              </label>
+              <select
+                value={filters.jobPositionId}
+                onChange={(e) =>
+                  setFilters({ ...filters, jobPositionId: e.target.value })
+                }
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Any</option>
+                {jobPositions.map((position) => (
+                  <option key={position.id} value={position.id}>
+                    {position.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-gray-700">Job</label>
+              <select
+                value={filters.jobId}
+                onChange={(e) =>
+                  setFilters({ ...filters, jobId: e.target.value })
+                }
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Any</option>
+                {jobs.map((job) => (
+                  <option key={job.id} value={job.id}>
+                    {job.jobCode} - {job.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-gray-700">
+                Profile Status
+              </label>
+              <select
+                value={filters.profileStatus}
+                onChange={(e) =>
+                  setFilters({ ...filters, profileStatus: e.target.value })
+                }
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Any</option>
+                {profileStatusOptions.map((status) => (
+                  <option key={status.value} value={status.value}>
+                    {status.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-gray-700">
+                Visa Status
+              </label>
+              <select
+                value={filters.visaStatus}
+                onChange={(e) =>
+                  setFilters({ ...filters, visaStatus: e.target.value })
+                }
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Any</option>
+                {visaStatusOptions.map((status) => (
+                  <option key={status.value} value={status.value}>
+                    {status.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-gray-700">
+                Location
+              </label>
+              <input
+                type="text"
+                value={filters.location}
+                onChange={(e) =>
+                  setFilters({ ...filters, location: e.target.value })
+                }
+                placeholder="City, state, country"
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-gray-700">
+                Min Experience (yrs)
+              </label>
+              <input
+                type="number"
+                min={0}
+                step={0.5}
+                value={filters.minExperience}
+                onChange={(e) =>
+                  setFilters({ ...filters, minExperience: e.target.value })
+                }
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-gray-700">
+                Max Experience (yrs)
+              </label>
+              <input
+                type="number"
+                min={0}
+                step={0.5}
+                value={filters.maxExperience}
+                onChange={(e) =>
+                  setFilters({ ...filters, maxExperience: e.target.value })
+                }
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white/90 backdrop-blur-sm border border-gray-200 rounded-2xl shadow-xl shadow-gray-200/70 overflow-hidden">
+        <div className="px-6 py-5 border-b border-gray-200 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-indigo-50 text-indigo-700 font-bold">
+              C
+            </span>
             All candidates
           </h2>
           {loading && <span className="text-xs text-gray-500">Loading...</span>}
         </div>
         <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
+          <thead className="bg-gray-50/80 border-b border-gray-200">
             <tr>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
                 Name
@@ -473,7 +750,13 @@ export const Candidates: React.FC = () => {
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
                 Profile Status
               </th>
-              {!isRecruiter && (
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                Job Position
+              </th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                Job
+              </th>
+              {!isStaff && (
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
                   Added By
                 </th>
@@ -483,23 +766,23 @@ export const Candidates: React.FC = () => {
               </th>
             </tr>
           </thead>
-          <tbody>
-            {candidates.length === 0 && !loading ? (
+          <tbody className="divide-y divide-gray-100">
+            {filteredCandidates.length === 0 && !loading ? (
               <tr>
                 <td
                   className="px-6 py-4 text-sm text-gray-500"
-                  colSpan={isRecruiter ? 6 : 7}
+                  colSpan={isStaff ? 8 : 9}
                 >
-                  No candidates yet. Add one above.
+                  No candidates found. Adjust filters or add one above.
                 </td>
               </tr>
             ) : (
               paginatedCandidates.map((candidate, idx) => (
                 <tr
                   key={candidate.id}
-                  className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                  className="hover:bg-blue-50/40 transition-colors"
                 >
-                  <td className="px-6 py-4 text-sm text-slate-900 font-medium">
+                  <td className="px-6 py-4 text-sm text-slate-900 font-semibold">
                     {candidate.name}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-700">
@@ -520,7 +803,24 @@ export const Candidates: React.FC = () => {
                       {toLabel(candidate.profileStatus, profileStatusOptions)}
                     </span>
                   </td>
-                  {!isRecruiter && (
+                  <td className="px-6 py-4 text-sm text-gray-700">
+                    {candidate.jobPositionId
+                      ? jobPositions.find(
+                          (p) => p.id === candidate.jobPositionId,
+                        )?.name || "-"
+                      : "-"}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-700">
+                    {candidate.jobId
+                      ? (() => {
+                          const job = jobs.find(
+                            (j) => j.id === candidate.jobId,
+                          );
+                          return job ? `${job.jobCode} - ${job.title}` : "-";
+                        })()
+                      : "-"}
+                  </td>
+                  {!isStaff && (
                     <td className="px-6 py-4 text-sm text-gray-700">
                       {candidate.createdByUsername ||
                         candidate.createdByEmail ||
@@ -556,8 +856,8 @@ export const Candidates: React.FC = () => {
           <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
             <div className="text-sm text-gray-600">
               Showing {startIndex + 1} to{" "}
-              {Math.min(endIndex, candidates.length)} of {candidates.length}{" "}
-              candidates
+              {Math.min(endIndex, filteredCandidates.length)} of{" "}
+              {filteredCandidates.length} candidates
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -700,7 +1000,7 @@ export const Candidates: React.FC = () => {
                     onChange={(e) =>
                       setForm({ ...form, profileStatus: e.target.value })
                     }
-                    disabled={isRecruiter}
+                    disabled={isStaff}
                   >
                     {profileStatusOptions.map((status) => (
                       <option key={status.value} value={status.value}>
@@ -708,7 +1008,7 @@ export const Candidates: React.FC = () => {
                       </option>
                     ))}
                   </select>
-                  {isRecruiter && (
+                  {isStaff && (
                     <span className="text-xs text-gray-500 italic">
                       Only admins can change profile status
                     </span>
@@ -919,7 +1219,7 @@ export const Candidates: React.FC = () => {
                   </a>
                 </div>
               )}
-              {!isRecruiter && (
+              {!isStaff && (
                 <div className="flex items-center gap-2">
                   <span className="font-semibold">Added by:</span>
                   <span>

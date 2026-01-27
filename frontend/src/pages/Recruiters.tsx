@@ -45,7 +45,10 @@ export const Recruiters: React.FC = () => {
       });
       if (!res.ok) return;
       const data = await res.json();
-      setRecruiters(data.recruiters || []);
+      const cleaned = (data.recruiters || []).filter(
+        (rec: { role: string }) => rec.role !== "partner",
+      );
+      setRecruiters(cleaned);
     } catch (err) {
       console.error("Failed to load recruiters", err);
     } finally {
@@ -165,7 +168,11 @@ export const Recruiters: React.FC = () => {
         throw new Error(err.error || `Failed (${res.status})`);
       }
 
-      setStatus("Team member created successfully.");
+      const data = await res.json();
+      setStatus(
+        data.message ||
+          "Team member created successfully! Awaiting super admin approval.",
+      );
       setEmail("");
       setUsername("");
       setPassword("");

@@ -326,4 +326,93 @@ router.get('/stats/summary', async (req, res, next) => {
   }
 });
 
+// Analytics endpoint (admin only)
+router.get('/analytics/insights', async (req, res, next) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Only admins can view analytics' });
+    }
+
+    const accountId = tenantAccountId(req);
+
+    // Overall stats
+    const statsQuery = `
+      SELECT
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE profile_status = 'hired')::int AS hired,
+        COUNT(*) FILTER (WHERE profile_status = 'rejected')::int AS rejected,
+        ROUND((COUNT(*) FILTER (WHERE profile_status = 'hired')::numeric / NULLIF(COUNT(*), 0) * 100), 1)::float AS acceptanceRate
+      FROM candidates WHERE account_id = $1;
+    `;
+
+    // Recruiter/team member stats
+    const recruiterQuery = `
+      SELECT
+        cb.username,
+        cb.email,
+        COUNT(c.id)::int AS candidatesAdded,
+        COUNT(c.id) FILTER (WHERE c.profile_status = 'hired')::int AS hired,
+        ROUND((COUNT(c.id) FILTER (WHERE c.profile_status = 'hired')::numeric / NULLIF(COUNT(c.id), 0) * 100), 1)::float AS acceptanceRate
+      FROM candidates c
+      LEFT JOIN accounts cb ON cb.id = c.created_by
+      WHERE c.account_id = $1
+      GROUP BY cb.id, cb.username, cb.email
+      ORDER BY COUNT(c.id) DESC;
+    `;
+
+    // Profile status distribution
+    const statusDistQuery = `
+      SELECT
+        profile_status AS status,
+        COUNT(*)::int AS count
+      FROM candidates
+      WHERE account_id = $1
+      GROUP BY profile_status
+      ORDER BY count DESC;
+    `;
+
+    // Visa status distribution
+    const visaDistQuery = `
+      SELECT
+        COALESCE(visa_status, 'Not Specified') AS visaStatus,
+        COUNT(*)::int AS count
+      FROM candidates
+      WHERE account_id = $1
+      GROUP BY visa_status
+      ORDER BY count DESC;
+    `;
+
+    // Job position distribution
+    const jobPosQuery = `
+      SELECT
+        jp.name AS position,
+        COUNT(c.id)::int AS count,
+        COUNT(c.id) FILTER (WHERE c.profile_status = 'hired')::int AS hired
+      FROM candidates c
+      LEFT JOIN job_positions jp ON jp.id = c.job_position_id
+      WHERE c.account_id = $1
+      GROUP BY jp.id, jp.name
+      ORDER BY count DESC;
+    `;
+
+    const params = [accountId];
+
+    const stats = await query(statsQuery, params);
+    const recruiters = await query(recruiterQuery, params);
+    const statusDist = await query(statusDistQuery, params);
+    const visaDist = await query(visaDistQuery, params);
+    const jobPosDist = await query(jobPosQuery, params);
+
+    res.json({
+      summary: stats.rows[0],
+      recruiterStats: recruiters.rows,
+      statusDistribution: statusDist.rows,
+      visaDistribution: visaDist.rows,
+      jobPositionStats: jobPosDist.rows,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

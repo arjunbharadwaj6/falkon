@@ -9,7 +9,7 @@ export const Login: React.FC = () => {
   const redirectTo =
     (location.state as { from?: string } | undefined)?.from || "/";
 
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +20,7 @@ export const Login: React.FC = () => {
     setError(null);
     setLoading(true);
     try {
-      await login(email, password);
+      await login(identifier, password);
       navigate(redirectTo, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
@@ -66,20 +66,20 @@ export const Login: React.FC = () => {
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-2">
               <label
-                htmlFor="email"
+                htmlFor="identifier"
                 className="text-sm font-semibold text-gray-700"
               >
-                Email <span className="text-red-500">*</span>
+                Email or Username <span className="text-red-500">*</span>
               </label>
               <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
+                id="identifier"
+                name="identifier"
+                type="text"
+                autoComplete="username"
                 className="w-full border-2 border-gray-200 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white hover:border-gray-300 text-gray-900"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com or yourusername"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 required
               />
             </div>

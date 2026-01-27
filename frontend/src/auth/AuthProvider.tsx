@@ -15,7 +15,7 @@ type Account = {
 type AuthContextType = {
   token: string | null;
   account: Account | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (identifier: string, password: string) => Promise<void>;
   signup: (
     companyName: string,
     email: string,
@@ -76,8 +76,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     localStorage.setItem("auth_account", JSON.stringify(acc));
   };
 
-  const login = async (email: string, password: string) => {
-    const data = await authRequest("/auth/login", { email, password });
+  const login = async (identifier: string, password: string) => {
+    const data = await authRequest("/auth/login", {
+      identifier,
+      email: identifier,
+      password,
+    });
     persist(data.token, data.account);
   };
 
@@ -94,10 +98,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       password,
     });
 
-    // Account created but pending admin approval
+    // Account created but pending super admin approval
     if (!data.account.isApproved) {
       throw new Error(
-        "Account created! Await admin approval to access all features.",
+        "Account created successfully! Please wait for super admin approval to log in.",
       );
     }
 

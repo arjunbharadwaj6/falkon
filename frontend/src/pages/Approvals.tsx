@@ -106,7 +106,7 @@ export const Approvals: React.FC = () => {
                 Pending Approvals
               </h1>
               <p className="text-gray-600 mt-1">
-                Review and approve new account registrations
+                Review and approve new account registrations and team members
               </p>
             </div>
             <button

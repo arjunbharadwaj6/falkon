@@ -100,16 +100,17 @@ router.post('/signup', async (req, res, next) => {
 
 router.post('/login', async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { email, identifier, password } = req.body;
+    const loginIdentifier = (identifier || email || '').toLowerCase();
 
-    if (!email || !password) {
-      return res.status(400).json({ error: 'email and password are required' });
+    if (!loginIdentifier || !password) {
+      return res.status(400).json({ error: 'email/username and password are required' });
     }
 
     const { rows } = await query(
       `SELECT id, company_name AS "companyName", email, username, password_hash, role, parent_account_id AS "parentAccountId", is_approved AS "isApproved"
-       FROM accounts WHERE email = $1`,
-      [email.toLowerCase()]
+       FROM accounts WHERE email = $1 OR username = $1 LIMIT 1`,
+      [loginIdentifier]
     );
     if (!rows.length) {
       return res.status(401).json({ error: 'invalid credentials' });
@@ -121,9 +122,9 @@ router.post('/login', async (req, res, next) => {
       return res.status(401).json({ error: 'invalid credentials' });
     }
 
-    // Check if admin account is approved
-    if (account.role === 'admin' && !account.isApproved) {
-      return res.status(403).json({ error: 'Your account is pending admin approval. Please try again later.' });
+    // Check if account is approved (applies to all account types)
+    if (!account.isApproved) {
+      return res.status(403).json({ error: 'Your account is pending super admin approval. Please try again later.' });
     }
 
     const token = signToken({ accountId: account.id, email: account.email, role: account.role, parentAccountId: account.parentAccountId, isApproved: account.isApproved });
@@ -223,7 +224,7 @@ router.get('/recruiters', authRequired, async (req, res, next) => {
     const { rows } = await query(
       `SELECT id, company_name AS "companyName", email, username, role, parent_account_id AS "parentAccountId", created_at AS "createdAt"
        FROM accounts
-       WHERE (role = 'recruiter' OR role = 'admin' OR role = 'partner') AND parent_account_id = $1
+       WHERE (role = 'recruiter' OR role = 'admin') AND parent_account_id = $1
        ORDER BY created_at DESC`,
       [req.user.accountId]
     );
@@ -306,14 +307,17 @@ router.post('/recruiters', authRequired, async (req, res, next) => {
 
     const passwordHash = await bcrypt.hash(password, 10);
     const insert = await query(
-      `INSERT INTO accounts (company_name, email, username, password_hash, role, parent_account_id, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id, company_name AS "companyName", email, username, role, parent_account_id AS "parentAccountId", created_at` ,
+      `INSERT INTO accounts (company_name, email, username, password_hash, role, parent_account_id, created_by, is_approved)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, false)
+       RETURNING id, company_name AS "companyName", email, username, role, parent_account_id AS "parentAccountId", is_approved AS "isApproved", created_at` ,
       [companyName, email.toLowerCase(), username.toLowerCase(), passwordHash, role, req.user.accountId, req.user.accountId]
     );
 
     const account = insert.rows[0];
-    res.status(201).json({ account: normalizeLoginResponse(account) });
+    res.status(201).json({ 
+      message: 'Team member created successfully! They must be approved by super admin before they can log in.',
+      account: normalizeLoginResponse(account) 
+    });
   } catch (error) {
     next(error);
   }
@@ -495,9 +499,9 @@ router.get('/pending-approvals', authRequired, async (req, res, next) => {
     }
 
     const { rows } = await query(
-      `SELECT id, company_name AS "companyName", email, username, role, created_at AS "createdAt", is_approved AS "isApproved"
+      `SELECT id, company_name AS "companyName", email, username, role, created_at AS "createdAt", is_approved AS "isApproved", parent_account_id AS "parentAccountId"
        FROM accounts
-       WHERE is_approved = false AND role = 'admin'
+       WHERE is_approved = false AND (role = 'admin' OR (role IN ('recruiter', 'partner') AND parent_account_id IS NOT NULL))
        ORDER BY created_at DESC`
     );
 

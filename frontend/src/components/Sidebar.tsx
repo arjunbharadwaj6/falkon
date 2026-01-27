@@ -22,14 +22,24 @@ export const Sidebar: React.FC = () => {
             { path: "/approvals", label: "Approvals", icon: "✅" },
             { path: "/accounts", label: "Accounts", icon: "📇" },
           ]
-        : [
-            { path: "/", label: "Dashboard", icon: "📊" },
-            { path: "/jobs", label: "Jobs", icon: "💼" },
-            { path: "/candidates", label: "Candidates", icon: "👥" },
-            { path: "/recruiters", label: "Team Members", icon: "🧑‍💼" },
-            { path: "/partners", label: "Partners", icon: "🤝" },
-            { path: "/profile", label: "Profile", icon: "⚙️" },
-          ];
+        : account?.role === "admin"
+          ? [
+              { path: "/", label: "Dashboard", icon: "📊" },
+              { path: "/jobs", label: "Jobs", icon: "💼" },
+              { path: "/candidates", label: "Candidates", icon: "👥" },
+              { path: "/recruiters", label: "Team Members", icon: "🧑‍💼" },
+              { path: "/partners", label: "Partners", icon: "🤝" },
+              { path: "/reports", label: "Reports", icon: "📈" },
+              { path: "/profile", label: "Profile", icon: "⚙️" },
+            ]
+          : [
+              { path: "/", label: "Dashboard", icon: "📊" },
+              { path: "/jobs", label: "Jobs", icon: "💼" },
+              { path: "/candidates", label: "Candidates", icon: "👥" },
+              { path: "/recruiters", label: "Team Members", icon: "🧑‍💼" },
+              { path: "/partners", label: "Partners", icon: "🤝" },
+              { path: "/profile", label: "Profile", icon: "⚙️" },
+            ];
 
   const isActive = (path: string) => location.pathname === path;
 
