@@ -14,7 +14,8 @@ export const authRequired = (req, res, next) => {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     const role = payload.role || 'admin';
     const parentAccountId = payload.parentAccountId || null;
-    const tenantAccountId = parentAccountId || payload.sub;
+    // Tenancy: admins operate on their own account; recruiters/partners inherit their admin's account
+    const tenantAccountId = role === 'admin' ? payload.sub : (parentAccountId || payload.sub);
 
     req.user = {
       accountId: payload.sub,
