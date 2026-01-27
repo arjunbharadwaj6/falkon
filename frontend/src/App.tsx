@@ -40,7 +40,9 @@ function App() {
             <Route
               path="/jobs"
               element={
-                <ProtectedRoute allowedRoles={["admin", "recruiter", "partner"]}>
+                <ProtectedRoute
+                  allowedRoles={["admin", "recruiter", "partner"]}
+                >
                   <Jobs />
                 </ProtectedRoute>
               }
@@ -48,7 +50,9 @@ function App() {
             <Route
               path="/candidates"
               element={
-                <ProtectedRoute allowedRoles={["admin", "recruiter", "partner"]}>
+                <ProtectedRoute
+                  allowedRoles={["admin", "recruiter", "partner"]}
+                >
                   <Candidates />
                 </ProtectedRoute>
               }
@@ -88,7 +92,9 @@ function App() {
             <Route
               path="/profile"
               element={
-                <ProtectedRoute allowedRoles={["admin", "recruiter", "partner"]}>
+                <ProtectedRoute
+                  allowedRoles={["admin", "recruiter", "partner"]}
+                >
                   <Profile />
                 </ProtectedRoute>
               }
