@@ -191,14 +191,14 @@ export const Partners: React.FC = () => {
               Partners
             </h1>
             <p className="text-sm text-gray-600 mt-2">
-              Manage team members (admins and partners) in your organization
+              Manage partners in your organization
             </p>
           </div>
           <button
             onClick={openAddModal}
             className="px-6 py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-sm text-white font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
           >
-            + Add Team Member
+            + Add Partner
           </button>
         </div>
 
@@ -215,10 +215,10 @@ export const Partners: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold text-gray-900">
-                  All Partners
+                  Partners
                 </h2>
                 <p className="text-xs text-gray-600 mt-1">
-                  Manage admins and partners in your organization
+                  View and manage all partners
                 </p>
               </div>
               {loading && (
@@ -358,7 +358,7 @@ export const Partners: React.FC = () => {
               <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-xl">
                 <div className="flex items-center justify-between">
                   <h2 className="text-2xl font-bold text-gray-900">
-                    Add New Team Member
+                    Add New Partner
                   </h2>
                   <button
                     onClick={closeAddModal}
