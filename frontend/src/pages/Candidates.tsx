@@ -147,12 +147,16 @@ export const Candidates: React.FC = () => {
     jobPositionId: "",
     jobId: "",
     additionalComments: "",
+    createdBy: "",
   });
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [jobPositions, setJobPositions] = useState<JobPosition[]>([]);
+  const [recruiters, setRecruiters] = useState<
+    Array<{ id: string; email: string; username?: string }>
+  >([]);
   const [filters, setFilters] = useState({
     search: "",
     jobPositionId: "",
@@ -269,12 +273,31 @@ export const Candidates: React.FC = () => {
     }
   };
 
+  const fetchRecruiters = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/auth/accounts`, {
+        headers: apiHeaders,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const recruitersData = data.accounts || [];
+        setRecruiters(recruitersData);
+      }
+    } catch (err) {
+      console.error("Failed to fetch recruiters", err);
+    }
+  };
+
   useEffect(() => {
     if (token) {
       fetchCandidates();
       fetchStats();
       fetchJobs();
       fetchJobPositions();
+      if (!isStaff) {
+        fetchRecruiters();
+      }
     }
   }, [token]);
 
@@ -297,6 +320,7 @@ export const Candidates: React.FC = () => {
       jobPositionId: "",
       jobId: "",
       additionalComments: "",
+      createdBy: "",
     });
     setResumeFile(null);
     setShowModal(false);
@@ -328,6 +352,7 @@ export const Candidates: React.FC = () => {
     if (form.jobId) payload.jobId = form.jobId;
     if (form.additionalComments)
       payload.additionalComments = form.additionalComments.trim();
+    if (form.createdBy) payload.createdBy = form.createdBy;
 
     // Upload resume file if selected
     if (resumeFile) {
@@ -417,6 +442,7 @@ export const Candidates: React.FC = () => {
       jobPositionId: candidate.jobPositionId || "",
       jobId: candidate.jobId || "",
       additionalComments: (candidate as any).additionalComments || "",
+      createdBy: (candidate as any).createdBy || "",
     });
     setShowModal(true);
   };
@@ -1225,6 +1251,26 @@ export const Candidates: React.FC = () => {
                     }
                   />
                 </label>
+
+                {!isStaff && (
+                  <label className="flex flex-col text-sm text-gray-800 gap-1">
+                    Added By
+                    <select
+                      className="border border-gray-300 bg-white text-gray-900 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={form.createdBy}
+                      onChange={(e) =>
+                        setForm({ ...form, createdBy: e.target.value })
+                      }
+                    >
+                      <option value="">-- Select Recruiter (Optional) --</option>
+                      {recruiters.map((recruiter) => (
+                        <option key={recruiter.id} value={recruiter.id}>
+                          {recruiter.username || recruiter.email}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
 
                 <label className="flex flex-col text-sm text-gray-800 gap-1">
                   Resume (PDF)
