@@ -6,14 +6,13 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { testConnection, ensureSchema, closePool } from './db.js';
-import { verifyEmailTransporter } from './services/email.js';
+// Import Firebase routes
 import healthRouter from './routes/health.js';
-import candidatesRouter from './routes/candidates.js';
-import authRouter from './routes/auth.js';
+import candidatesRouter from './routes/candidates-firebase.js';
+import authRouter from './routes/auth-firebase.js';
 import uploadRouter from './routes/upload.js';
-import jobsRouter from './routes/jobs.js';
-import jobPositionsRouter from './routes/jobPositions.js';
+import jobsRouter from './routes/jobs-firebase.js';
+import jobPositionsRouter from './routes/jobPositions-firebase.js';
 import dashboardRouter from './routes/dashboard.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -110,8 +109,7 @@ const gracefulShutdown = async (signal) => {
   console.log(`\n${signal} received. Starting graceful shutdown...`);
   
   try {
-    await closePool();
-    console.log('Database connections closed');
+    console.log('Shutting down server...');
     process.exit(0);
   } catch (error) {
     console.error('Error during shutdown:', error);
@@ -125,23 +123,13 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 // Start server
 const startServer = async () => {
   try {
-    // Test database connection before starting server
-    const dbConnected = await testConnection();
-    if (dbConnected) {
-      await ensureSchema();
-    }
-    
-    if (!dbConnected) {
-      console.warn('⚠ Warning: Server starting without database connection');
-    }
-
-    // Verify email transporter
-    await verifyEmailTransporter();
+    console.log('Starting ATS Backend with Firebase...');
 
     app.listen(PORT, () => {
       console.log('═══════════════════════════════════════════════');
       console.log(`🚀 ATS Backend Server running on port ${PORT}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🔥 Using Firebase for database and authentication`);
       console.log(`🔗 Health check: http://localhost:${PORT}/health`);
       console.log('═══════════════════════════════════════════════');
     });
