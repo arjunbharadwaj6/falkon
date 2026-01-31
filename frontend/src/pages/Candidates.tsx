@@ -1360,18 +1360,18 @@ export const Candidates: React.FC = () => {
 
       {showViewModal && selected && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-40">
-          <div className="bg-white border border-gray-200 rounded-lg shadow-2xl shadow-gray-200/80 w-full max-w-xl p-6 relative text-slate-900">
+          <div className="bg-white border border-gray-200 rounded-lg shadow-2xl shadow-gray-200/80 w-full max-w-xl max-h-[90vh] flex flex-col relative text-slate-900">
             <button
-              className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
+              className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 z-10"
               onClick={() => setShowViewModal(false)}
               aria-label="Close"
             >
               ✕
             </button>
-            <h2 className="text-xl font-semibold text-slate-900 mb-4">
+            <h2 className="text-xl font-semibold text-slate-900 mb-4 p-6 pb-0">
               Candidate details
             </h2>
-            <div className="space-y-3 text-sm text-slate-900">
+            <div className="space-y-3 text-sm text-slate-900 overflow-y-auto flex-1 p-6 pt-2">
               <div className="flex items-center gap-2">
                 <span className="font-semibold">Name:</span>
                 <span>{selected.name}</span>
@@ -1467,7 +1467,9 @@ export const Candidates: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <span className="font-semibold">Added by:</span>
                   <span>
-                    {selected.createdByUsername || selected.createdByEmail || "-"}
+                    {selected.createdByUsername ||
+                      selected.createdByEmail ||
+                      "-"}
                   </span>
                 </div>
               )}
@@ -1481,7 +1483,7 @@ export const Candidates: React.FC = () => {
                 </div>
               )}
             </div>
-            <div className="flex items-center justify-end gap-3 mt-6">
+            <div className="border-t border-gray-200 p-6 flex items-center justify-end gap-3 bg-gray-50 rounded-b-lg">
               <button
                 type="button"
                 className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
