@@ -188,7 +188,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         throw new Error(errorData.error || "Signup failed");
       }
 
-      const data = await response.json();
+      await response.json();
 
       throw new Error(
         "Account created successfully! Please wait for super admin approval to log in.",
