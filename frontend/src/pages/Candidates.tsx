@@ -191,6 +191,7 @@ export const Candidates: React.FC = () => {
     "jobPositionId",
     "jobId",
     "additionalComments",
+    "createdBy",
   ];
 
   const apiHeaders = useMemo(
@@ -620,6 +621,16 @@ export const Candidates: React.FC = () => {
               candidateField === "profileStatus"
             ) {
               payload[candidateField] = value;
+            } else if (candidateField === "createdBy") {
+              // Match recruiter by email or username
+              const recruiter = recruiters.find(
+                (r) =>
+                  r.email.toLowerCase() === value.toLowerCase() ||
+                  r.username?.toLowerCase() === value.toLowerCase(),
+              );
+              if (recruiter) {
+                payload[candidateField] = recruiter.id;
+              }
             } else {
               payload[candidateField] = value;
             }
@@ -1262,7 +1273,9 @@ export const Candidates: React.FC = () => {
                         setForm({ ...form, createdBy: e.target.value })
                       }
                     >
-                      <option value="">-- Select Recruiter (Optional) --</option>
+                      <option value="">
+                        -- Select Recruiter (Optional) --
+                      </option>
                       {recruiters.map((recruiter) => (
                         <option key={recruiter.id} value={recruiter.id}>
                           {recruiter.username || recruiter.email}
@@ -1517,6 +1530,11 @@ export const Candidates: React.FC = () => {
                     Map CSV columns to candidate fields. Leave unmapped columns
                     blank.
                   </p>
+                  <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-800">
+                    💡 Tip: Map a column to "createdBy" and enter recruiter
+                    email or username. It will automatically match with your
+                    recruiters.
+                  </div>
                   <div className="space-y-3 max-h-96 overflow-y-auto">
                     {csvHeaders.map((header) => (
                       <div
