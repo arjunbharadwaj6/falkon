@@ -1463,13 +1463,20 @@ export const Candidates: React.FC = () => {
                   </span>
                 </div>
               )}
-              {!isStaff && (
+              {(selected.createdByUsername || selected.createdByEmail) && (
                 <div className="flex items-center gap-2">
                   <span className="font-semibold">Added by:</span>
                   <span>
-                    {selected.createdByUsername ||
-                      selected.createdByEmail ||
-                      "-"}
+                    {selected.createdByUsername || selected.createdByEmail || "-"}
+                  </span>
+                </div>
+              )}
+              {selected.created_at && (
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">Created:</span>
+                  <span>
+                    {new Date(selected.created_at).toLocaleDateString()} at{" "}
+                    {new Date(selected.created_at).toLocaleTimeString()}
                   </span>
                 </div>
               )}
