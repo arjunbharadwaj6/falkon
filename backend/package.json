@@ -1,26 +1,24 @@
 {
   "name": "ats-backend",
   "version": "1.0.0",
-  "description": "Production-ready backend server for ATS (Applicant Tracking System)",
+  "description": "Production-ready backend server for ATS (Applicant Tracking System) with Firebase",
   "main": "src/server.js",
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "migrate": "node scripts/run-migrations.js",
-    "seed:admin": "node scripts/seed-super-admin.js"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
     "ats",
     "express",
-    "postgresql",
+    "firebase",
+    "firestore",
     "backend"
   ],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "crypto": "^1.0.1",
     "dotenv": "^16.3.1",
@@ -29,11 +27,9 @@
     "firebase": "^12.8.0",
     "firebase-admin": "^13.6.0",
     "helmet": "^7.1.0",
-    "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
     "multer": "^2.0.2",
-    "nodemailer": "^6.9.7",
-    "pg": "^8.11.3"
+    "nodemailer": "^6.9.7"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
