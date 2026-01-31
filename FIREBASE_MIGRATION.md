@@ -3,6 +3,7 @@
 ## ✅ Completed Tasks
 
 ### Backend Migration
+
 1. **Installed Packages**
    - `firebase` (v12.8.0)
    - `firebase-admin` (for backend)
@@ -26,6 +27,7 @@
    - Removed PostgreSQL dependencies from startup
 
 ### Frontend Migration
+
 1. **Created Firebase Configuration**
    - `/frontend/src/firebase.ts` - Client SDK initialization
    - Configured: Auth, Firestore, Storage, Analytics
@@ -39,7 +41,9 @@
 ## 🔧 Configuration Needed
 
 ### Backend Setup
+
 1. **Firebase Service Account** (for production)
+
    ```bash
    # Download service account key from Firebase Console
    # Go to: Project Settings > Service Accounts > Generate New Private Key
@@ -48,26 +52,29 @@
    ```
 
 2. **Development Setup**
+
    ```bash
    # Option 1: Firebase CLI
    firebase login
-   
+
    # Option 2: Service account file
    export GOOGLE_APPLICATION_CREDENTIALS=/path/to/serviceAccountKey.json
    ```
 
 3. **Environment Variables** (see `.env.firebase`)
    - Remove DATABASE_URL, DB_HOST, etc. (PostgreSQL vars)
-   - Keep EMAIL_ variables
+   - Keep EMAIL\_ variables
    - Add FIREBASE_SERVICE_ACCOUNT_KEY for production
 
 ### Frontend Setup
+
 - No additional configuration needed
 - Firebase config is already in `/frontend/src/firebase.ts`
 
 ## 🚀 How It Works Now
 
 ### Authentication Flow
+
 1. **Signup:**
    - User signs up via Firebase `createUserWithEmailAndPassword()`
    - Account document created in Firestore `accounts` collection
@@ -87,6 +94,7 @@
    - Auth state persists across page reloads
 
 ### Data Storage
+
 - **Firestore Collections:**
   - `accounts` - User accounts with role, approval status
   - `candidates` - Candidate profiles
@@ -101,6 +109,7 @@
 ## 📝 Next Steps
 
 ### Required Actions
+
 1. **Create Firebase Service Account:**
    - Go to [Firebase Console](https://console.firebase.google.com/)
    - Select project: `falkon-b7c5f`
@@ -109,6 +118,7 @@
    - Add to production .env as `FIREBASE_SERVICE_ACCOUNT_KEY`
 
 2. **Update Firestore Security Rules:**
+
    ```javascript
    rules_version = '2';
    service cloud.firestore {
@@ -134,6 +144,7 @@
    - [ ] Test approval workflow
 
 ### Optional Enhancements
+
 1. **Firebase Storage:**
    - Migrate resume/file uploads to Firebase Storage
    - Update `/backend/src/routes/upload.js`
@@ -149,6 +160,7 @@
 ## 🔥 Firebase Advantages
 
 ### What We Gain
+
 1. **No Database Management:** No PostgreSQL to maintain
 2. **Auto-scaling:** Firestore scales automatically
 3. **Real-time:** Native support for real-time data sync
@@ -158,6 +170,7 @@
 7. **Integrated Auth:** No JWT management needed
 
 ### Migration Notes
+
 - Old PostgreSQL code preserved in original files
 - New Firebase routes use `-firebase` suffix
 - Both systems can coexist during transition
@@ -167,6 +180,7 @@
 ## 🐛 Troubleshooting
 
 ### Common Issues
+
 1. **"Firebase Admin initialization error"**
    - Check FIREBASE_SERVICE_ACCOUNT_KEY in .env
    - Or set GOOGLE_APPLICATION_CREDENTIALS

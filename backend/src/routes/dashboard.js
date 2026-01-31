@@ -1,101 +1,113 @@
 import express from 'express';
-import { query } from '../db.js';
-import { authRequired } from '../middleware/auth.js';
+import { db, collections } from '../firebase.js';
+import { authRequired } from '../middleware/auth-firebase.js';
 
 const router = express.Router();
 
 router.get('/dashboard/stats', authRequired, async (req, res, next) => {
   try {
     const isAdmin = req.user.role === 'admin';
-    const accountId = req.user.accountId;
+    const ownerAccountId = isAdmin ? req.user.accountId : req.user.parentAccountId || req.user.accountId;
+
+    // Get jobs
+    const jobsSnapshot = await db.collection(collections.jobs)
+      .where('ownerAccountId', '==', ownerAccountId)
+      .get();
     
-    // Get the owner account ID (for both admin and recruiter)
-    const ownerAccountId = isAdmin ? accountId : req.user.parentAccountId || accountId;
+    const jobs = jobsSnapshot.docs.map(doc => doc.data());
+    const jobStats = {
+      total: jobs.length,
+      active: jobs.filter(j => j.status === 'active').length,
+      onhold: jobs.filter(j => j.status === 'onhold').length,
+      closed: jobs.filter(j => j.status === 'closed').length,
+    };
 
-    // Get total jobs
-    const jobsResult = await query(
-      `SELECT COUNT(*) as total,
-              COUNT(*) FILTER (WHERE status = 'active') as active,
-              COUNT(*) FILTER (WHERE status = 'onhold') as onhold,
-              COUNT(*) FILTER (WHERE status = 'closed') as closed
-       FROM jobs 
-       WHERE owner_account_id = $1`,
-      [ownerAccountId]
-    );
+    // Get candidates
+    const candidatesSnapshot = await db.collection(collections.candidates)
+      .where('accountId', '==', ownerAccountId)
+      .get();
+    
+    const candidates = candidatesSnapshot.docs.map(doc => doc.data());
+    const candidateStats = {
+      total: candidates.length,
+      new: candidates.filter(c => c.profileStatus === 'new').length,
+      screening: candidates.filter(c => c.profileStatus === 'screening').length,
+      interview: candidates.filter(c => c.profileStatus === 'interview').length,
+      offer: candidates.filter(c => c.profileStatus === 'offer').length,
+      hired: candidates.filter(c => c.profileStatus === 'hired').length,
+      rejected: candidates.filter(c => c.profileStatus === 'rejected').length,
+    };
 
-    // Get candidate statistics
-    const candidatesResult = await query(
-      `SELECT COUNT(*) as total,
-              COUNT(*) FILTER (WHERE profile_status = 'new') as new,
-              COUNT(*) FILTER (WHERE profile_status = 'screening') as screening,
-              COUNT(*) FILTER (WHERE profile_status = 'interview') as interview,
-              COUNT(*) FILTER (WHERE profile_status = 'offer') as offer,
-              COUNT(*) FILTER (WHERE profile_status = 'hired') as hired,
-              COUNT(*) FILTER (WHERE profile_status = 'rejected') as rejected
-       FROM candidates 
-       WHERE account_id = $1`,
-      [ownerAccountId]
-    );
+    // Get recent candidates
+    const recentCandidatesSnapshot = await db.collection(collections.candidates)
+      .where('accountId', '==', ownerAccountId)
+      .orderBy('createdAt', 'desc')
+      .limit(5)
+      .get();
+    
+    const recentCandidates = recentCandidatesSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        name: data.name,
+        profile_status: data.profileStatus,
+        created_at: data.createdAt,
+        created_by_name: data.createdByUsername,
+      };
+    });
 
-    // Get recent activities (last 10 candidates and jobs)
-    const recentCandidates = await query(
-      `SELECT c.name, c.profile_status, c.created_at, a.username as created_by_name
-       FROM candidates c
-       LEFT JOIN accounts a ON c.created_by = a.id
-       WHERE c.account_id = $1
-       ORDER BY c.created_at DESC
-       LIMIT 5`,
-      [ownerAccountId]
-    );
+    // Get recent jobs
+    const recentJobsSnapshot = await db.collection(collections.jobs)
+      .where('ownerAccountId', '==', ownerAccountId)
+      .orderBy('createdAt', 'desc')
+      .limit(5)
+      .get();
+    
+    const recentJobs = recentJobsSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        title: data.title,
+        status: data.status,
+        created_at: data.createdAt,
+        created_by_name: 'Admin',
+      };
+    });
 
-    const recentJobs = await query(
-      `SELECT j.title, j.status, j.created_at, a.username as created_by_name
-       FROM jobs j
-       LEFT JOIN accounts a ON j.created_by = a.id
-       WHERE j.owner_account_id = $1
-       ORDER BY j.created_at DESC
-       LIMIT 5`,
-      [ownerAccountId]
-    );
-
-    // Get recruiter count (only for admins)
+    // Get recruiter count
     let recruiterCount = 0;
     if (isAdmin) {
-      const recruitersResult = await query(
-        `SELECT COUNT(*) as count
-         FROM accounts
-         WHERE parent_account_id = $1 AND role = 'recruiter'`,
-        [accountId]
-      );
-      recruiterCount = parseInt(recruitersResult.rows[0].count);
+      const recruitersSnapshot = await db.collection(collections.accounts)
+        .where('parentAccountId', '==', req.user.accountId)
+        .where('role', '==', 'recruiter')
+        .get();
+      recruiterCount = recruitersSnapshot.size;
     }
 
     const stats = {
       jobs: {
-        total: parseInt(jobsResult.rows[0].total),
-        active: parseInt(jobsResult.rows[0].active),
-        onhold: parseInt(jobsResult.rows[0].onhold),
-        closed: parseInt(jobsResult.rows[0].closed),
+        total: jobStats.total,
+        active: jobStats.active,
+        onhold: jobStats.onhold,
+        closed: jobStats.closed,
       },
       candidates: {
-        total: parseInt(candidatesResult.rows[0].total),
-        new: parseInt(candidatesResult.rows[0].new),
-        screening: parseInt(candidatesResult.rows[0].screening),
-        interview: parseInt(candidatesResult.rows[0].interview),
-        offer: parseInt(candidatesResult.rows[0].offer),
-        hired: parseInt(candidatesResult.rows[0].hired),
-        rejected: parseInt(candidatesResult.rows[0].rejected),
+        total: candidateStats.total,
+        new: candidateStats.new,
+        screening: candidateStats.screening,
+        interview: candidateStats.interview,
+        offer: candidateStats.offer,
+        hired: candidateStats.hired,
+        rejected: candidateStats.rejected,
       },
       recruiters: recruiterCount,
       recentActivity: [
-        ...recentJobs.rows.map(job => ({
+        ...recentJobs.map(job => ({
           type: 'job',
           title: job.title,
           status: job.status,
           createdAt: job.created_at,
           createdBy: job.created_by_name,
         })),
-        ...recentCandidates.rows.map(candidate => ({
+        ...recentCandidates.map(candidate => ({
           type: 'candidate',
           title: candidate.name,
           status: candidate.profile_status,

@@ -1,10 +1,10 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { 
-  signInWithEmailAndPassword, 
+import {
+  signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  User
+  User,
 } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
@@ -53,11 +53,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         try {
           // Get Firebase ID token
           const idToken = await user.getIdToken();
-          
+
           // Get user account data from Firestore
           const accountRef = doc(db, "accounts", user.uid);
           const accountSnap = await getDoc(accountRef);
-          
+
           if (accountSnap.exists()) {
             const accountData = accountSnap.data();
             const acc: Account = {
@@ -69,7 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
               parentAccountId: accountData.parentAccountId,
               isApproved: accountData.isApproved !== false,
             };
-            
+
             setToken(idToken);
             setAccount(acc);
             setFirebaseUser(user);
@@ -117,41 +117,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const login = async (identifier: string, password: string) => {
     try {
       let email = identifier;
-      
+
       // If identifier doesn't contain @, it's a username - look it up
-      if (!identifier.includes('@')) {
+      if (!identifier.includes("@")) {
         // Call backend to get email from username
         const response = await fetch(`${API_BASE}/auth/username-lookup`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ username: identifier }),
         });
-        
+
         if (!response.ok) {
           throw new Error("Invalid credentials");
         }
-        
+
         const data = await response.json();
         email = data.email;
       }
-      
+
       // Sign in with Firebase
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password,
+      );
+
       // Get account data
       const accountRef = doc(db, "accounts", userCredential.user.uid);
       const accountSnap = await getDoc(accountRef);
-      
+
       if (!accountSnap.exists()) {
         throw new Error("Account not found");
       }
-      
+
       const accountData = accountSnap.data();
-      
+
       // Check if account is approved
       if (accountData.isApproved === false) {
         await signOut(auth);
-        throw new Error("Your account is pending super admin approval. Please try again later.");
+        throw new Error(
+          "Your account is pending super admin approval. Please try again later.",
+        );
       }
     } catch (error: any) {
       console.error("Login error:", error);
@@ -167,12 +173,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   ) => {
     try {
       // Create user in Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password,
+      );
+
       // Get super admin ID
       // For now, we'll set this to null and handle it in backend
       const superAdminId = null;
-      
+
       // Create account document in Firestore
       const accountData = {
         companyName,
@@ -184,12 +194,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      
+
       await setDoc(doc(db, "accounts", userCredential.user.uid), accountData);
-      
+
       // Sign out immediately - user must wait for approval
       await signOut(auth);
-      
+
       throw new Error(
         "Account created successfully! Please wait for super admin approval to log in.",
       );

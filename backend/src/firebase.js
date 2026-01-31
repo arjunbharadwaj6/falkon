@@ -5,18 +5,30 @@ import { getAuth } from 'firebase-admin/auth';
 // Initialize Firebase Admin
 let app;
 try {
-  // For production, use service account key file
+  // Try service account key from .env first
   if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
     const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
     app = admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
       projectId: 'falkon-b7c5f',
     });
+    console.log('✅ Firebase Admin initialized with service account from .env');
   } else {
-    // For development, use application default credentials
-    app = admin.initializeApp({
-      projectId: 'falkon-b7c5f',
-    });
+    // Try to load from serviceAccountKey.json file
+    try {
+      const serviceAccount = await import('../serviceAccountKey.json', { assert: { type: 'json' } });
+      app = admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount.default),
+        projectId: 'falkon-b7c5f',
+      });
+      console.log('✅ Firebase Admin initialized with serviceAccountKey.json');
+    } catch (fileError) {
+      // Fall back to application default credentials
+      app = admin.initializeApp({
+        projectId: 'falkon-b7c5f',
+      });
+      console.log('✅ Firebase Admin initialized with application default credentials');
+    }
   }
 } catch (error) {
   console.error('Firebase Admin initialization error:', error.message);

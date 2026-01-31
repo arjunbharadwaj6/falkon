@@ -1,5 +1,5 @@
 import express from 'express';
-import { query } from '../db.js';
+import { db } from '../firebase.js';
 
 const router = express.Router();
 
@@ -18,14 +18,13 @@ router.get('/', async (req, res) => {
   };
 
   try {
-    // Check database connectivity
-    const result = await query('SELECT NOW() as time, version() as version');
+    // Check Firestore connectivity
+    const testRef = db.collection('_health_check').limit(1);
+    await testRef.get();
     
-    if (result.rows.length > 0) {
-      healthCheck.database = 'connected';
-      healthCheck.databaseTime = result.rows[0].time;
-      healthCheck.databaseVersion = result.rows[0].version.split(',')[0];
-    }
+    healthCheck.database = 'connected';
+    healthCheck.databaseType = 'Firebase Firestore';
+    healthCheck.projectId = 'falkon-b7c5f';
 
     res.status(200).json(healthCheck);
   } catch (error) {
