@@ -1,12 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import type { User } from "firebase/auth";
 import {
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  User,
 } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
 
 type Role = "admin" | "recruiter" | "partner";
@@ -49,8 +48,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     // Listen for auth state changes
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        try {
+      try {
+        if (user) {
           // Get Firebase ID token
           const idToken = await user.getIdToken();
 
@@ -76,18 +75,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             localStorage.setItem("auth_token", idToken);
             localStorage.setItem("auth_account", JSON.stringify(acc));
           }
-        } catch (error) {
-          console.error("Error fetching account data:", error);
+        } else {
           setToken(null);
           setAccount(null);
           setFirebaseUser(null);
+          localStorage.removeItem("auth_token");
+          localStorage.removeItem("auth_account");
         }
-      } else {
+      } catch (error) {
+        console.error("Error fetching account data:", error);
         setToken(null);
         setAccount(null);
         setFirebaseUser(null);
-        localStorage.removeItem("auth_token");
-        localStorage.removeItem("auth_account");
       }
       setIsInitialized(true);
     });
@@ -172,33 +171,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     password: string,
   ) => {
     try {
-      // Create user in Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password,
-      );
+      // Call backend to handle signup
+      const response = await fetch(`${API_BASE}/auth/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyName,
+          email,
+          username,
+          password,
+        }),
+      });
 
-      // Get super admin ID
-      // For now, we'll set this to null and handle it in backend
-      const superAdminId = null;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Signup failed");
+      }
 
-      // Create account document in Firestore
-      const accountData = {
-        companyName,
-        email: email.toLowerCase(),
-        username: username.toLowerCase(),
-        role: "admin",
-        isApproved: false,
-        parentAccountId: superAdminId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      await setDoc(doc(db, "accounts", userCredential.user.uid), accountData);
-
-      // Sign out immediately - user must wait for approval
-      await signOut(auth);
+      const data = await response.json();
 
       throw new Error(
         "Account created successfully! Please wait for super admin approval to log in.",

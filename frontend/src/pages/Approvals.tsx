@@ -42,7 +42,7 @@ export const Approvals: React.FC = () => {
         throw new Error(`Failed to load approvals (${res.status}): ${errText}`);
       }
       const data = await res.json();
-      setPending(data.pendingApprovals || []);
+      setPending(data.pending || []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load approvals");
     } finally {
@@ -58,9 +58,10 @@ export const Approvals: React.FC = () => {
     setActionBusy(id);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/auth/approve-account/${id}`, {
+      const res = await fetch(`${API_BASE}/auth/approve-account`, {
         method: "POST",
         headers,
+        body: JSON.stringify({ accountId: id }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -78,10 +79,10 @@ export const Approvals: React.FC = () => {
     setActionBusy(id);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/auth/reject-account/${id}`, {
+      const res = await fetch(`${API_BASE}/auth/reject-account`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ reason: "Not a valid company" }),
+        body: JSON.stringify({ accountId: id, reason: "Not a valid company" }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));

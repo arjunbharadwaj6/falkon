@@ -1,6 +1,7 @@
 import express from 'express';
 import { db, collections } from '../firebase.js';
 import { authRequired } from '../middleware/auth-firebase.js';
+import { formatTimestamp } from '../utils/dateFormatter.js';
 
 const router = express.Router();
 
@@ -41,16 +42,22 @@ router.get('/dashboard/stats', authRequired, async (req, res, next) => {
     // Get recent candidates
     const recentCandidatesSnapshot = await db.collection(collections.candidates)
       .where('accountId', '==', ownerAccountId)
-      .orderBy('createdAt', 'desc')
-      .limit(5)
       .get();
     
-    const recentCandidates = recentCandidatesSnapshot.docs.map(doc => {
+    const recentCandidatesDocs = recentCandidatesSnapshot.docs
+      .sort((a, b) => {
+        const timeA = a.data().createdAt?.toMillis?.() || (typeof a.data().createdAt === 'number' ? a.data().createdAt : 0);
+        const timeB = b.data().createdAt?.toMillis?.() || (typeof b.data().createdAt === 'number' ? b.data().createdAt : 0);
+        return timeB - timeA;
+      })
+      .slice(0, 5);
+    
+    const recentCandidates = recentCandidatesDocs.map(doc => {
       const data = doc.data();
       return {
         name: data.name,
         profile_status: data.profileStatus,
-        created_at: data.createdAt,
+        created_at: formatTimestamp(data.createdAt),
         created_by_name: data.createdByUsername,
       };
     });
@@ -58,16 +65,22 @@ router.get('/dashboard/stats', authRequired, async (req, res, next) => {
     // Get recent jobs
     const recentJobsSnapshot = await db.collection(collections.jobs)
       .where('ownerAccountId', '==', ownerAccountId)
-      .orderBy('createdAt', 'desc')
-      .limit(5)
       .get();
     
-    const recentJobs = recentJobsSnapshot.docs.map(doc => {
+    const recentJobsDocs = recentJobsSnapshot.docs
+      .sort((a, b) => {
+        const timeA = a.data().createdAt?.toMillis?.() || (typeof a.data().createdAt === 'number' ? a.data().createdAt : 0);
+        const timeB = b.data().createdAt?.toMillis?.() || (typeof b.data().createdAt === 'number' ? b.data().createdAt : 0);
+        return timeB - timeA;
+      })
+      .slice(0, 5);
+    
+    const recentJobs = recentJobsDocs.map(doc => {
       const data = doc.data();
       return {
         title: data.title,
         status: data.status,
-        created_at: data.createdAt,
+        created_at: formatTimestamp(data.createdAt),
         created_by_name: 'Admin',
       };
     });

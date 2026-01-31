@@ -2,6 +2,7 @@ import express from 'express';
 import { randomUUID } from 'crypto';
 import { db, collections } from '../firebase.js';
 import { authRequired } from '../middleware/auth-firebase.js';
+import { formatDatesInObject } from '../utils/dateFormatter.js';
 
 const router = express.Router();
 
@@ -11,7 +12,7 @@ const STATUSES = ['active', 'onhold', 'closed'];
 const generateJobCode = () => `JOB-${randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase()}`;
 
 // Create job
-router.post('/jobs', authRequired, async (req, res, next) => {
+router.post('/', authRequired, async (req, res, next) => {
   try {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Only admins can create jobs' });
@@ -91,7 +92,7 @@ router.post('/jobs', authRequired, async (req, res, next) => {
 });
 
 // Get all jobs
-router.get('/jobs', authRequired, async (req, res, next) => {
+router.get('/', authRequired, async (req, res, next) => {
   try {
     const ownerAccountId = req.user.role === 'admin' ? req.user.accountId : req.user.parentAccountId;
 
@@ -101,10 +102,15 @@ router.get('/jobs', authRequired, async (req, res, next) => {
 
     const snapshot = await db.collection(collections.jobs)
       .where('ownerAccountId', '==', ownerAccountId)
-      .orderBy('createdAt', 'desc')
       .get();
 
-    const jobs = await Promise.all(snapshot.docs.map(async (doc) => {
+    const sortedDocs = snapshot.docs.sort((a, b) => {
+      const timeA = a.data().createdAt?.toMillis?.() || (typeof a.data().createdAt === 'number' ? a.data().createdAt : 0);
+      const timeB = b.data().createdAt?.toMillis?.() || (typeof b.data().createdAt === 'number' ? b.data().createdAt : 0);
+      return timeB - timeA;
+    });
+
+    const jobs = await Promise.all(sortedDocs.map(async (doc) => {
       const jobData = doc.data();
       let jobPositionName = null;
 
@@ -116,11 +122,11 @@ router.get('/jobs', authRequired, async (req, res, next) => {
         }
       }
 
-      return {
+      return formatDatesInObject({
         id: doc.id,
         ...jobData,
         jobPositionName,
-      };
+      });
     }));
 
     res.json({ jobs });
@@ -130,7 +136,7 @@ router.get('/jobs', authRequired, async (req, res, next) => {
 });
 
 // Update job
-router.put('/jobs/:id', authRequired, async (req, res, next) => {
+router.put('/:id', authRequired, async (req, res, next) => {
   try {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Only admins can update jobs' });
@@ -174,7 +180,7 @@ router.put('/jobs/:id', authRequired, async (req, res, next) => {
 });
 
 // Delete job
-router.delete('/jobs/:id', authRequired, async (req, res, next) => {
+router.delete('/:id', authRequired, async (req, res, next) => {
   try {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Only admins can delete jobs' });

@@ -37,12 +37,24 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
 
-            <Route path="/" element={token ? <Dashboard /> : <Landing />} />
+            <Route
+              path="/"
+              element={
+                token ? (
+                  <ProtectedRoute requireApproved={true}>
+                    <Dashboard />
+                  </ProtectedRoute>
+                ) : (
+                  <Landing />
+                )
+              }
+            />
             <Route
               path="/jobs"
               element={
                 <ProtectedRoute
                   allowedRoles={["admin", "recruiter", "partner"]}
+                  requireApproved={true}
                 >
                   <Jobs />
                 </ProtectedRoute>
@@ -53,6 +65,7 @@ function App() {
               element={
                 <ProtectedRoute
                   allowedRoles={["admin", "recruiter", "partner"]}
+                  requireApproved={true}
                 >
                   <Candidates />
                 </ProtectedRoute>
@@ -61,7 +74,7 @@ function App() {
             <Route
               path="/recruiters"
               element={
-                <ProtectedRoute allowedRoles={["admin"]}>
+                <ProtectedRoute allowedRoles={["admin"]} requireApproved={true}>
                   <Recruiters />
                 </ProtectedRoute>
               }
@@ -69,7 +82,7 @@ function App() {
             <Route
               path="/partners"
               element={
-                <ProtectedRoute allowedRoles={["admin"]}>
+                <ProtectedRoute allowedRoles={["admin"]} requireApproved={true}>
                   <Partners />
                 </ProtectedRoute>
               }
@@ -77,7 +90,7 @@ function App() {
             <Route
               path="/reports"
               element={
-                <ProtectedRoute allowedRoles={["admin"]}>
+                <ProtectedRoute allowedRoles={["admin"]} requireApproved={true}>
                   <Reports />
                 </ProtectedRoute>
               }
@@ -85,7 +98,11 @@ function App() {
             <Route
               path="/approvals"
               element={
-                <ProtectedRoute allowedRoles={["admin"]} superAdminOnly={true}>
+                <ProtectedRoute
+                  allowedRoles={["admin"]}
+                  superAdminOnly={true}
+                  requireApproved={true}
+                >
                   <Approvals />
                 </ProtectedRoute>
               }
@@ -93,7 +110,11 @@ function App() {
             <Route
               path="/accounts"
               element={
-                <ProtectedRoute allowedRoles={["admin"]} superAdminOnly={true}>
+                <ProtectedRoute
+                  allowedRoles={["admin"]}
+                  superAdminOnly={true}
+                  requireApproved={true}
+                >
                   <Accounts />
                 </ProtectedRoute>
               }
@@ -103,6 +124,7 @@ function App() {
               element={
                 <ProtectedRoute
                   allowedRoles={["admin", "recruiter", "partner"]}
+                  requireApproved={false}
                 >
                   <Profile />
                 </ProtectedRoute>

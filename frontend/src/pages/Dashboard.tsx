@@ -38,7 +38,17 @@ export const Dashboard: React.FC = () => {
 
   useEffect(() => {
     const fetchStats = async () => {
-      if (!token) return;
+      if (!token) {
+        console.log("Dashboard: No token available");
+        setError("Not authenticated - please log in");
+        setLoading(false);
+        return;
+      }
+
+      console.log(
+        "Dashboard: Fetching stats with token:",
+        token.substring(0, 20) + "...",
+      );
 
       try {
         setLoading(true);
@@ -49,13 +59,21 @@ export const Dashboard: React.FC = () => {
           },
         });
 
+        console.log("Dashboard API response status:", res.status);
+
         if (!res.ok) {
-          throw new Error("Failed to fetch dashboard stats");
+          const errorData = await res.json().catch(() => ({}));
+          console.error("Dashboard API error:", errorData);
+          throw new Error(
+            `Failed to fetch dashboard stats (${res.status}): ${errorData.error || res.statusText}`,
+          );
         }
 
         const data = await res.json();
+        console.log("Dashboard stats received:", data);
         setStats(data);
       } catch (err) {
+        console.error("Dashboard fetch error:", err);
         setError(
           err instanceof Error ? err.message : "Failed to load dashboard",
         );

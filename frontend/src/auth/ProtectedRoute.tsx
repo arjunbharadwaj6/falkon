@@ -5,18 +5,35 @@ type ProtectedRouteProps = {
   children: React.ReactNode;
   allowedRoles?: Array<"admin" | "recruiter" | "partner">;
   superAdminOnly?: boolean;
+  requireApproved?: boolean;
 };
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   allowedRoles,
   superAdminOnly = false,
+  requireApproved = true,
 }) => {
   const { token, account } = useAuth();
   const location = useLocation();
 
   if (!token) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  }
+
+  // Check if account is approved (if required)
+  if (requireApproved && account && !account.isApproved) {
+    return (
+      <Navigate
+        to="/profile"
+        state={{
+          from: location.pathname,
+          message:
+            "Your account is pending approval. Please wait for admin approval.",
+        }}
+        replace
+      />
+    );
   }
 
   // Check if super admin only route

@@ -146,14 +146,14 @@ export const Jobs: React.FC = () => {
   const fetchJobPositions = async () => {
     if (!token) return;
     try {
-      const res = await fetch(`${API_BASE}/api/job-positions`, {
+      const res = await fetch(`${API_BASE}/api/jobPositions`, {
         headers: apiHeaders,
       });
       if (!res.ok) {
         throw new Error(`Failed to load job positions (${res.status})`);
       }
       const data = await res.json();
-      setJobPositions(data.positions || []);
+      setJobPositions(data.jobPositions || []);
     } catch (err) {
       console.error("Failed to load job positions:", err);
     }
@@ -340,7 +340,7 @@ export const Jobs: React.FC = () => {
     }
 
     try {
-      const res = await fetch(`${API_BASE}/api/job-positions`, {
+      const res = await fetch(`${API_BASE}/api/jobPositions`, {
         method: "POST",
         headers: apiHeaders,
         body: JSON.stringify({
@@ -355,7 +355,7 @@ export const Jobs: React.FC = () => {
       }
 
       const data = await res.json();
-      const newPosition: JobPosition = data.position;
+      const newPosition: JobPosition = data.jobPosition;
       setJobPositions((prev) =>
         [...prev, newPosition].sort((a, b) => a.name.localeCompare(b.name)),
       );

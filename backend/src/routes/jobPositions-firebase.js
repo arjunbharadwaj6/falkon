@@ -1,6 +1,7 @@
 import express from 'express';
 import { db, collections } from '../firebase.js';
 import { authRequired } from '../middleware/auth-firebase.js';
+import { formatDatesInObject } from '../utils/dateFormatter.js';
 
 const router = express.Router();
 
@@ -59,13 +60,18 @@ router.get('/', authRequired, async (req, res, next) => {
 
     const snapshot = await db.collection(collections.jobPositions)
       .where('ownerAccountId', '==', ownerAccountId)
-      .orderBy('createdAt', 'desc')
       .get();
 
-    const jobPositions = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    const jobPositions = snapshot.docs
+      .sort((a, b) => {
+        const timeA = a.data().createdAt?.toMillis?.() || (typeof a.data().createdAt === 'number' ? a.data().createdAt : 0);
+        const timeB = b.data().createdAt?.toMillis?.() || (typeof b.data().createdAt === 'number' ? b.data().createdAt : 0);
+        return timeB - timeA;
+      })
+      .map(doc => formatDatesInObject({
+        id: doc.id,
+        ...doc.data(),
+      }));
 
     res.json({ jobPositions });
   } catch (error) {

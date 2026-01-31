@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
+import Papa from "papaparse";
 
 type Candidate = {
   id: string;
@@ -18,6 +19,7 @@ type Candidate = {
   createdBy?: string;
   createdByUsername?: string | null;
   createdByEmail?: string | null;
+  additionalComments?: string | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -139,6 +141,7 @@ export const Candidates: React.FC = () => {
     resumeUrl: "",
     jobPositionId: "",
     jobId: "",
+    additionalComments: "",
   });
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -156,6 +159,30 @@ export const Candidates: React.FC = () => {
     maxExperience: "",
   });
   const [filtersOpen, setFiltersOpen] = useState(true);
+
+  // CSV Import state
+  const [showCsvModal, setShowCsvModal] = useState(false);
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  const [csvData, setCsvData] = useState<Record<string, string>[]>([]);
+  const [fieldMapping, setFieldMapping] = useState<Record<string, string>>({});
+  const [csvStep, setCsvStep] = useState<"upload" | "mapping" | "preview">(
+    "upload",
+  );
+  const [csvImporting, setCsvImporting] = useState(false);
+
+  const availableFields = [
+    "name",
+    "email",
+    "phone",
+    "location",
+    "visaStatus",
+    "experience",
+    "profileStatus",
+    "linkedinUrl",
+    "jobPositionId",
+    "jobId",
+    "additionalComments",
+  ];
 
   const apiHeaders = useMemo(
     () => ({
@@ -225,12 +252,12 @@ export const Candidates: React.FC = () => {
   const fetchJobPositions = async () => {
     if (!token) return;
     try {
-      const res = await fetch(`${API_BASE}/api/job-positions`, {
+      const res = await fetch(`${API_BASE}/api/jobPositions`, {
         headers: apiHeaders,
       });
       if (res.ok) {
         const data = await res.json();
-        setJobPositions(data.positions || []);
+        setJobPositions(data.jobPositions || []);
       }
     } catch (err) {
       console.error("Failed to fetch job positions", err);
@@ -264,6 +291,7 @@ export const Candidates: React.FC = () => {
       resumeUrl: "",
       jobPositionId: "",
       jobId: "",
+      additionalComments: "",
     });
     setResumeFile(null);
     setShowModal(false);
@@ -293,6 +321,8 @@ export const Candidates: React.FC = () => {
     if (form.linkedinUrl) payload.linkedinUrl = form.linkedinUrl.trim();
     if (form.jobPositionId) payload.jobPositionId = form.jobPositionId;
     if (form.jobId) payload.jobId = form.jobId;
+    if (form.additionalComments)
+      payload.additionalComments = form.additionalComments.trim();
 
     // Upload resume file if selected
     if (resumeFile) {
@@ -381,6 +411,7 @@ export const Candidates: React.FC = () => {
       resumeUrl: candidate.resumeUrl || "",
       jobPositionId: candidate.jobPositionId || "",
       jobId: candidate.jobId || "",
+      additionalComments: (candidate as any).additionalComments || "",
     });
     setShowModal(true);
   };
@@ -506,6 +537,109 @@ export const Candidates: React.FC = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  // CSV Import handlers
+  const handleCsvFileSelect = (file: File) => {
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (result) => {
+        if (result.data && result.data.length > 0) {
+          const headers = Object.keys(
+            result.data[0] as Record<string, unknown>,
+          );
+          setCsvHeaders(headers);
+          setCsvData(result.data as Record<string, string>[]);
+          setCsvStep("mapping");
+        }
+      },
+      error: (error) => {
+        setError(`CSV parsing error: ${error.message}`);
+      },
+    });
+  };
+
+  const handleCsvImport = async () => {
+    if (csvData.length === 0) {
+      setError("No data to import");
+      return;
+    }
+
+    setCsvImporting(true);
+    setError(null);
+
+    try {
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const row of csvData) {
+        const payload: Record<string, unknown> = {};
+
+        // Map CSV columns to candidate fields
+        for (const [csvHeader, candidateField] of Object.entries(
+          fieldMapping,
+        )) {
+          if (candidateField && row[csvHeader]) {
+            const value = row[csvHeader].trim();
+
+            // Type conversion based on field
+            if (candidateField === "experience") {
+              payload[candidateField] = Number(value);
+            } else if (
+              candidateField === "visaStatus" ||
+              candidateField === "profileStatus"
+            ) {
+              payload[candidateField] = value;
+            } else {
+              payload[candidateField] = value;
+            }
+          }
+        }
+
+        if (!payload.name) {
+          errorCount++;
+          continue;
+        }
+
+        try {
+          const res = await fetch(`${API_BASE}/api/candidates`, {
+            method: "POST",
+            headers: apiHeaders,
+            body: JSON.stringify(payload),
+          });
+
+          if (res.ok) {
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        } catch {
+          errorCount++;
+        }
+      }
+
+      setError(`Import completed: ${successCount} added, ${errorCount} failed`);
+      setCsvImporting(false);
+      setShowCsvModal(false);
+      setCsvStep("upload");
+      setCsvHeaders([]);
+      setCsvData([]);
+      setFieldMapping({});
+      await fetchCandidates();
+      fetchStats();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Import failed");
+      setCsvImporting(false);
+    }
+  };
+
+  const resetCsvModal = () => {
+    setShowCsvModal(false);
+    setCsvStep("upload");
+    setCsvHeaders([]);
+    setCsvData([]);
+    setFieldMapping({});
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 px-6 py-10 md:px-12 lg:px-16 space-y-8 text-slate-900">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -518,15 +652,23 @@ export const Candidates: React.FC = () => {
             context.
           </p>
         </div>
-        <button
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md shadow-blue-500/30"
-          onClick={() => {
-            resetForm();
-            setShowModal(true);
-          }}
-        >
-          + Add candidate
-        </button>
+        <div className="flex gap-3">
+          <button
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md shadow-blue-500/30"
+            onClick={() => {
+              resetForm();
+              setShowModal(true);
+            }}
+          >
+            + Add candidate
+          </button>
+          <button
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-md shadow-green-500/30"
+            onClick={() => setShowCsvModal(true)}
+          >
+            📤 Import CSV
+          </button>
+        </div>
       </div>
 
       {isStaff && (
@@ -1016,7 +1158,7 @@ export const Candidates: React.FC = () => {
                 </label>
 
                 <label className="flex flex-col text-sm text-gray-800 gap-1">
-                  Job Position Type
+                  Job Position
                   <select
                     className="border border-gray-300 bg-white text-gray-900 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={form.jobPositionId}
@@ -1062,6 +1204,19 @@ export const Candidates: React.FC = () => {
                     value={form.linkedinUrl}
                     onChange={(e) =>
                       setForm({ ...form, linkedinUrl: e.target.value })
+                    }
+                  />
+                </label>
+
+                <label className="flex flex-col text-sm text-gray-800 gap-1">
+                  Additional Comments
+                  <textarea
+                    className="border border-gray-300 bg-white text-gray-900 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400 resize-none"
+                    placeholder="Add any additional notes or comments..."
+                    rows={3}
+                    value={form.additionalComments}
+                    onChange={(e) =>
+                      setForm({ ...form, additionalComments: e.target.value })
                     }
                   />
                 </label>
@@ -1248,6 +1403,123 @@ export const Candidates: React.FC = () => {
               >
                 Edit
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CSV Import Modal */}
+      {showCsvModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl overflow-auto max-h-[90vh]">
+            <div className="border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Import Candidates from CSV
+              </h2>
+              <button
+                onClick={resetCsvModal}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="px-6 py-4">
+              {csvStep === "upload" && (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-600">
+                    Upload a CSV file with candidate information. The first row
+                    should contain column headers.
+                  </p>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition">
+                    <input
+                      type="file"
+                      accept=".csv"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          handleCsvFileSelect(file);
+                        }
+                      }}
+                      className="hidden"
+                      id="csv-upload"
+                    />
+                    <label
+                      htmlFor="csv-upload"
+                      className="cursor-pointer block"
+                    >
+                      <div className="text-4xl mb-2">📁</div>
+                      <p className="font-medium text-gray-900">
+                        Click to upload CSV
+                      </p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        or drag and drop
+                      </p>
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {csvStep === "mapping" && (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-600">
+                    Map CSV columns to candidate fields. Leave unmapped columns
+                    blank.
+                  </p>
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {csvHeaders.map((header) => (
+                      <div
+                        key={header}
+                        className="flex items-center gap-3 p-3 bg-gray-50 rounded"
+                      >
+                        <label className="w-40 text-sm font-medium text-gray-700">
+                          {header}
+                        </label>
+                        <select
+                          value={fieldMapping[header] || ""}
+                          onChange={(e) => {
+                            setFieldMapping({
+                              ...fieldMapping,
+                              [header]: e.target.value,
+                            });
+                          }}
+                          className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">-- Skip this column --</option>
+                          {availableFields.map((field) => (
+                            <option key={field} value={field}>
+                              {field}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Found {csvData.length} rows to import
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-gray-200 px-6 py-4 flex justify-end gap-3">
+              <button
+                type="button"
+                className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
+                onClick={resetCsvModal}
+              >
+                Cancel
+              </button>
+              {csvStep === "mapping" && (
+                <button
+                  type="button"
+                  disabled={csvImporting}
+                  className="px-4 py-2 rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-60"
+                  onClick={handleCsvImport}
+                >
+                  {csvImporting ? "Importing..." : "Import Candidates"}
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import express from 'express';
 import { db, collections } from '../firebase.js';
 import { authRequired } from '../middleware/auth-firebase.js';
+import { formatDatesInObject } from '../utils/dateFormatter.js';
 
 const router = express.Router();
 
@@ -154,12 +155,18 @@ router.get('/', async (req, res, next) => {
       query = query.where('createdBy', '==', req.user.accountId);
     }
 
-    const snapshot = await query.orderBy('createdAt', 'desc').get();
+    const snapshot = await query.get();
 
-    const candidates = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    const candidates = snapshot.docs
+      .sort((a, b) => {
+        const timeA = a.data().createdAt?.toMillis?.() || (typeof a.data().createdAt === 'number' ? a.data().createdAt : 0);
+        const timeB = b.data().createdAt?.toMillis?.() || (typeof b.data().createdAt === 'number' ? b.data().createdAt : 0);
+        return timeB - timeA;
+      })
+      .map(doc => formatDatesInObject({
+        id: doc.id,
+        ...doc.data(),
+      }));
 
     res.json({ candidates });
   } catch (error) {

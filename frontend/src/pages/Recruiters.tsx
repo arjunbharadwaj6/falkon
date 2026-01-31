@@ -23,6 +23,7 @@ export const Recruiters: React.FC = () => {
     }>
   >([]);
   const [resettingId, setResettingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showResetModal, setShowResetModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [resetPassword, setResetPassword] = useState("");
@@ -128,6 +129,35 @@ export const Recruiters: React.FC = () => {
       );
     } finally {
       setResettingId(null);
+    }
+  };
+
+  const handleDeleteRecruiter = async (recruiterId: string) => {
+    if (!token) return;
+    if (!confirm("Are you sure you want to delete this team member?")) return;
+
+    setDeletingId(recruiterId);
+    setStatus(null);
+    try {
+      const res = await fetch(`${API_BASE}/auth/recruiters/${recruiterId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Failed to delete (${res.status})`);
+      }
+      setStatus("Team member deleted successfully.");
+      fetchRecruiters();
+    } catch (err) {
+      setStatus(
+        err instanceof Error ? err.message : "Failed to delete team member",
+      );
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -304,15 +334,26 @@ export const Recruiters: React.FC = () => {
                           ? new Date(rec.createdAt).toLocaleString()
                           : "—"}
                       </td>
-                      <td className="px-6 py-4 text-sm text-right">
+                      <td className="px-6 py-4 text-sm text-right space-x-2">
                         <button
                           onClick={() => openResetModal(rec)}
-                          disabled={resettingId === rec.id}
+                          disabled={
+                            resettingId === rec.id || deletingId === rec.id
+                          }
                           className="px-4 py-2 bg-blue-600 text-xs text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium transition-colors shadow-sm hover:shadow-md"
                         >
                           {resettingId === rec.id
                             ? "Resetting..."
                             : "Reset Password"}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteRecruiter(rec.id)}
+                          disabled={
+                            deletingId === rec.id || resettingId === rec.id
+                          }
+                          className="px-4 py-2 bg-red-600 text-xs text-white rounded-lg hover:bg-red-700 disabled:opacity-50 font-medium transition-colors shadow-sm hover:shadow-md"
+                        >
+                          {deletingId === rec.id ? "Deleting..." : "Delete"}
                         </button>
                       </td>
                     </tr>

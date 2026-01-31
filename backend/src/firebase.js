@@ -1,6 +1,12 @@
 import admin from 'firebase-admin';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Initialize Firebase Admin
 let app;
@@ -16,12 +22,18 @@ try {
   } else {
     // Try to load from serviceAccountKey.json file
     try {
-      const serviceAccount = await import('../serviceAccountKey.json', { assert: { type: 'json' } });
-      app = admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount.default),
-        projectId: 'falkon-b7c5f',
-      });
-      console.log('✅ Firebase Admin initialized with serviceAccountKey.json');
+      const serviceAccountPath = path.join(__dirname, '../serviceAccountKey.json');
+      if (fs.existsSync(serviceAccountPath)) {
+        const raw = fs.readFileSync(serviceAccountPath, 'utf8');
+        const serviceAccount = JSON.parse(raw);
+        app = admin.initializeApp({
+          credential: admin.credential.cert(serviceAccount),
+          projectId: 'falkon-b7c5f',
+        });
+        console.log('✅ Firebase Admin initialized with serviceAccountKey.json');
+      } else {
+        throw new Error('serviceAccountKey.json not found');
+      }
     } catch (fileError) {
       // Fall back to application default credentials
       app = admin.initializeApp({

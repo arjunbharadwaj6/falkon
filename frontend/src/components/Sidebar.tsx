@@ -8,6 +8,7 @@ export const Sidebar: React.FC = () => {
   const { logout, account } = useAuth();
   const isRecruiter = account?.role === "recruiter";
   const isPartner = account?.role === "partner";
+  const isApproved = account?.isApproved !== false;
 
   const isSuperAdmin = account?.role === "admin" && !account?.parentAccountId;
   const navItems =
@@ -22,24 +23,26 @@ export const Sidebar: React.FC = () => {
             { path: "/approvals", label: "Approvals", icon: "✅" },
             { path: "/accounts", label: "Accounts", icon: "📇" },
           ]
-        : account?.role === "admin"
-          ? [
-              { path: "/", label: "Dashboard", icon: "📊" },
-              { path: "/jobs", label: "Jobs", icon: "💼" },
-              { path: "/candidates", label: "Candidates", icon: "👥" },
-              { path: "/recruiters", label: "Team Members", icon: "🧑‍💼" },
-              { path: "/partners", label: "Partners", icon: "🤝" },
-              { path: "/reports", label: "Reports", icon: "📈" },
-              { path: "/profile", label: "Profile", icon: "⚙️" },
-            ]
-          : [
-              { path: "/", label: "Dashboard", icon: "📊" },
-              { path: "/jobs", label: "Jobs", icon: "💼" },
-              { path: "/candidates", label: "Candidates", icon: "👥" },
-              { path: "/recruiters", label: "Team Members", icon: "🧑‍💼" },
-              { path: "/partners", label: "Partners", icon: "🤝" },
-              { path: "/profile", label: "Profile", icon: "⚙️" },
-            ];
+        : account?.role === "admin" && !isApproved
+          ? [{ path: "/profile", label: "Profile", icon: "⚙️" }]
+          : account?.role === "admin"
+            ? [
+                { path: "/", label: "Dashboard", icon: "📊" },
+                { path: "/jobs", label: "Jobs", icon: "💼" },
+                { path: "/candidates", label: "Candidates", icon: "👥" },
+                { path: "/recruiters", label: "Team Members", icon: "🧑‍💼" },
+                { path: "/partners", label: "Partners", icon: "🤝" },
+                { path: "/reports", label: "Reports", icon: "📈" },
+                { path: "/profile", label: "Profile", icon: "⚙️" },
+              ]
+            : [
+                { path: "/", label: "Dashboard", icon: "📊" },
+                { path: "/jobs", label: "Jobs", icon: "💼" },
+                { path: "/candidates", label: "Candidates", icon: "👥" },
+                { path: "/recruiters", label: "Team Members", icon: "🧑‍💼" },
+                { path: "/partners", label: "Partners", icon: "🤝" },
+                { path: "/profile", label: "Profile", icon: "⚙️" },
+              ];
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -80,6 +83,14 @@ export const Sidebar: React.FC = () => {
           <p className="text-xs font-semibold text-white truncate">
             {account?.email}
           </p>
+          {account?.companyName && (
+            <>
+              <p className="text-xs text-blue-200 mb-1 mt-2">Company</p>
+              <p className="text-xs font-semibold text-white truncate">
+                {account.companyName}
+              </p>
+            </>
+          )}
         </div>
         <button
           onClick={logout}

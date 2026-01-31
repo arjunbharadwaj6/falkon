@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { auth, db, collections } from '../firebase.js';
 import { authRequired } from '../middleware/auth-firebase.js';
 import { sendPasswordResetEmail, sendApprovalNotificationEmail, sendApprovedEmail, sendAdminApprovalEmail } from '../services/email.js';
+import { formatDatesInObject } from '../utils/dateFormatter.js';
 
 const router = express.Router();
 
@@ -274,16 +275,22 @@ router.get('/pending-approvals', authRequired, async (req, res, next) => {
       return res.status(403).json({ error: 'Only super admin can view pending approvals' });
     }
 
-    // Get pending admin accounts
+    // Get pending admin accounts - fetch without orderBy to avoid composite index requirement
     const pendingQuery = await db.collection(collections.accounts)
       .where('isApproved', '==', false)
-      .orderBy('createdAt', 'desc')
       .get();
 
-    const pending = pendingQuery.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    const pending = pendingQuery.docs
+      .map(doc => formatDatesInObject({
+        id: doc.id,
+        ...doc.data(),
+      }, ['createdAt', 'updatedAt', 'approvedAt']))
+      .sort((a, b) => {
+        // Sort by createdAt in descending order (most recent first)
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return timeB - timeA;
+      });
 
     res.json({ pending });
   } catch (error) {
@@ -334,6 +341,56 @@ router.post('/approve-account', authRequired, async (req, res, next) => {
       });
 
     res.json({ message: 'Account approved successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Reject account (super admin only)
+router.post('/reject-account', authRequired, async (req, res, next) => {
+  try {
+    const { accountId, reason } = req.body;
+    const isSuperAdmin = req.user.role === 'admin' && !req.user.parentAccountId;
+
+    if (!isSuperAdmin) {
+      return res.status(403).json({ error: 'Only super admin can reject accounts' });
+    }
+
+    if (!accountId) {
+      return res.status(400).json({ error: 'accountId is required' });
+    }
+
+    const accountRef = db.collection(collections.accounts).doc(accountId);
+    const accountDoc = await accountRef.get();
+
+    if (!accountDoc.exists) {
+      return res.status(404).json({ error: 'account not found' });
+    }
+
+    // Delete the account from Firestore
+    await accountRef.delete();
+
+    // Delete user from Firebase Auth
+    try {
+      await auth.deleteUser(accountId);
+    } catch (authError) {
+      if (authError.code !== 'auth/user-not-found') {
+        console.error('Error deleting user from Firebase Auth:', authError.message);
+      }
+    }
+
+    // Send rejection notification email
+    const accountData = accountDoc.data();
+    Promise.resolve()
+      .then(() => {
+        // You can create a sendRejectionEmail function or skip if not needed
+        console.log(`Account ${accountData.email} rejected. Reason: ${reason || 'Not specified'}`);
+      })
+      .catch((error) => {
+        console.error('Error in rejection notification:', error.message);
+      });
+
+    res.json({ message: 'Account rejected successfully' });
   } catch (error) {
     next(error);
   }
@@ -430,13 +487,18 @@ router.get('/recruiters', authRequired, async (req, res, next) => {
     const recruitersQuery = await db.collection(collections.accounts)
       .where('parentAccountId', '==', req.user.tenantAccountId)
       .where('role', '==', 'recruiter')
-      .orderBy('createdAt', 'desc')
       .get();
 
-    const recruiters = recruitersQuery.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    const recruiters = recruitersQuery.docs
+      .map(doc => formatDatesInObject({
+        id: doc.id,
+        ...doc.data(),
+      }, ['createdAt', 'updatedAt', 'approvedAt']))
+      .sort((a, b) => {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return timeB - timeA;
+      });
 
     res.json({ recruiters });
   } catch (error) {
@@ -454,15 +516,173 @@ router.get('/partners', authRequired, async (req, res, next) => {
     const partnersQuery = await db.collection(collections.accounts)
       .where('parentAccountId', '==', req.user.tenantAccountId)
       .where('role', '==', 'partner')
-      .orderBy('createdAt', 'desc')
       .get();
 
-    const partners = partnersQuery.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    const partners = partnersQuery.docs
+      .map(doc => formatDatesInObject({
+        id: doc.id,
+        ...doc.data(),
+      }, ['createdAt', 'updatedAt', 'approvedAt']))
+      .sort((a, b) => {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return timeB - timeA;
+      });
 
     res.json({ partners });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get all accounts (super admin only)
+router.get('/accounts', authRequired, async (req, res, next) => {
+  try {
+    const isSuperAdmin = req.user.role === 'admin' && !req.user.parentAccountId;
+
+    if (!isSuperAdmin) {
+      return res.status(403).json({ error: 'Only super admin can view all accounts' });
+    }
+
+    // Get all accounts
+    const accountsQuery = await db.collection(collections.accounts).get();
+
+    const accounts = accountsQuery.docs
+      .map(doc => formatDatesInObject({
+        id: doc.id,
+        ...doc.data(),
+      }, ['createdAt', 'updatedAt', 'approvedAt']))
+      .sort((a, b) => {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return timeB - timeA;
+      });
+
+    res.json({ accounts });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Delete account (super admin only)
+router.delete('/accounts/:accountId', authRequired, async (req, res, next) => {
+  try {
+    const { accountId } = req.params;
+    const isSuperAdmin = req.user.role === 'admin' && !req.user.parentAccountId;
+
+    if (!isSuperAdmin) {
+      return res.status(403).json({ error: 'Only super admin can delete accounts' });
+    }
+
+    if (!accountId) {
+      return res.status(400).json({ error: 'accountId is required' });
+    }
+
+    // Prevent deleting the super admin itself
+    if (accountId === req.user.accountId) {
+      return res.status(400).json({ error: 'Cannot delete your own account' });
+    }
+
+    const accountRef = db.collection(collections.accounts).doc(accountId);
+    const accountDoc = await accountRef.get();
+
+    if (!accountDoc.exists) {
+      return res.status(404).json({ error: 'account not found' });
+    }
+
+    // Delete the account from Firestore
+    await accountRef.delete();
+
+    // Delete user from Firebase Auth
+    try {
+      await auth.deleteUser(accountId);
+    } catch (authError) {
+      if (authError.code !== 'auth/user-not-found') {
+        console.error('Error deleting user from Firebase Auth:', authError.message);
+      }
+    }
+
+    res.json({ message: 'Account deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Delete recruiter (admin only)
+router.delete('/recruiters/:recruiterId', authRequired, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Only admins can delete team members' });
+    }
+
+    const { recruiterId } = req.params;
+
+    // Get recruiter info
+    const recruiterDoc = await db.collection(collections.accounts).doc(recruiterId).get();
+    if (!recruiterDoc.exists) {
+      return res.status(404).json({ error: 'Team member not found' });
+    }
+
+    const recruiter = recruiterDoc.data();
+
+    // Verify recruiter belongs to this admin
+    if (recruiter.parentAccountId !== req.user.tenantAccountId) {
+      return res.status(403).json({ error: 'Cannot delete team members from other accounts' });
+    }
+
+    // Delete from Firestore
+    await db.collection(collections.accounts).doc(recruiterId).delete();
+
+    // Delete from Firebase Auth
+    try {
+      await auth.deleteUser(recruiterId);
+    } catch (authError) {
+      if (authError.code !== 'auth/user-not-found') {
+        console.error('Error deleting recruiter from Firebase Auth:', authError.message);
+      }
+    }
+
+    res.json({ message: 'Team member deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Delete partner (admin only)
+router.delete('/partners/:partnerId', authRequired, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Only admins can delete partners' });
+    }
+
+    const { partnerId } = req.params;
+
+    // Get partner info
+    const partnerDoc = await db.collection(collections.accounts).doc(partnerId).get();
+    if (!partnerDoc.exists) {
+      return res.status(404).json({ error: 'Partner not found' });
+    }
+
+    const partner = partnerDoc.data();
+
+    // Verify partner belongs to this admin
+    if (partner.parentAccountId !== req.user.tenantAccountId) {
+      return res.status(403).json({ error: 'Cannot delete partners from other accounts' });
+    }
+
+    // Delete from Firestore
+    await db.collection(collections.accounts).doc(partnerId).delete();
+
+    // Delete from Firebase Auth
+    try {
+      await auth.deleteUser(partnerId);
+    } catch (authError) {
+      if (authError.code !== 'auth/user-not-found') {
+        console.error('Error deleting partner from Firebase Auth:', authError.message);
+      }
+    }
+
+    res.json({ message: 'Partner deleted successfully' });
   } catch (error) {
     next(error);
   }

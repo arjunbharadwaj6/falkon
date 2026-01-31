@@ -68,8 +68,8 @@ app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use('/health', healthRouter);
 app.use('/auth', authRouter);
 app.use('/api/candidates', candidatesRouter);
-app.use('/api', jobsRouter);
-app.use('/api', jobPositionsRouter);
+app.use('/api/jobs', jobsRouter);
+app.use('/api/jobPositions', jobPositionsRouter);
 app.use('/api', uploadRouter);
 app.use('/api', dashboardRouter);
 

@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow anyone to read/write their own account document
+    match /accounts/{accountId} {
+      allow read: if request.auth.uid == accountId;
+      allow create: if request.auth.uid == accountId;
+      allow update, delete: if request.auth.uid == accountId;
+    }
+
+    // Allow authenticated users to read/write candidates (filtered by account)
+    match /candidates/{candidateId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null;
+    }
+
+    // Allow authenticated users to read/write jobs (filtered by account)
+    match /jobs/{jobId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null;
+    }
+
+    // Allow authenticated users to read/write job positions (filtered by account)
+    match /jobPositions/{positionId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null;
+    }
+
+    // Allow password reset token access
+    match /passwordResetTokens/{tokenId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Allow account approval token access
+    match /accountApprovalTokens/{tokenId} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}
