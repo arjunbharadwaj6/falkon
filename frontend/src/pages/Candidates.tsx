@@ -1421,6 +1421,12 @@ export const Candidates: React.FC = () => {
                   </a>
                 </div>
               )}
+              {!selected.linkedinUrl && (
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">LinkedIn:</span>
+                  <span>-</span>
+                </div>
+              )}
               {selected.resumeUrl && (
                 <div className="flex items-center gap-2">
                   <span className="font-semibold">Resume:</span>
@@ -1438,31 +1444,35 @@ export const Candidates: React.FC = () => {
                   </a>
                 </div>
               )}
-              {selected.jobId && (
+              {!selected.resumeUrl && (
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold">Job:</span>
-                  <span>
-                    {jobs.find((j) => j.id === selected.jobId)?.title || "-"}
-                  </span>
+                  <span className="font-semibold">Resume:</span>
+                  <span>-</span>
                 </div>
               )}
-              {selected.jobPositionId && (
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">Job Position:</span>
-                  <span>
-                    {jobPositions.find((p) => p.id === selected.jobPositionId)
-                      ?.name || "-"}
-                  </span>
-                </div>
-              )}
-              {(selected as any).additionalComments && (
-                <div className="flex flex-col gap-2">
-                  <span className="font-semibold">Additional Comments:</span>
-                  <span className="bg-gray-50 p-2 rounded text-xs whitespace-pre-wrap">
-                    {(selected as any).additionalComments}
-                  </span>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">Job:</span>
+                <span>
+                  {selected.jobId
+                    ? jobs.find((j) => j.id === selected.jobId)?.title || "-"
+                    : "-"}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">Job Position:</span>
+                <span>
+                  {selected.jobPositionId
+                    ? jobPositions.find((p) => p.id === selected.jobPositionId)
+                        ?.name || "-"
+                    : "-"}
+                </span>
+              </div>
+              <div className="flex flex-col gap-2">
+                <span className="font-semibold">Additional Comments:</span>
+                <span className="bg-gray-50 p-2 rounded text-xs whitespace-pre-wrap">
+                  {(selected as any).additionalComments || "-"}
+                </span>
+              </div>
               {(selected.createdByUsername || selected.createdByEmail) && (
                 <div className="flex items-center gap-2">
                   <span className="font-semibold">Added by:</span>
