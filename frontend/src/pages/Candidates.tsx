@@ -44,10 +44,11 @@ type Job = {
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const profileStatusOptions = [
-  { value: "new", label: "New" },
+  { value: "submitted", label: "Submitted" },
+  { value: "selected", label: "Selected" },
   { value: "screening", label: "Screening" },
   { value: "interview", label: "Interview" },
-  { value: "offer", label: "Offer" },
+  { value: "offered", label: "Offered" },
   { value: "hired", label: "Hired" },
   { value: "rejected", label: "Rejected" },
   { value: "on-hold", label: "On Hold" },
@@ -65,11 +66,15 @@ const visaStatusOptions = [
 
 const profileStatusColor = (status: string) => {
   switch (status) {
-    case "interview":
+    case "submitted":
       return "bg-blue-50 text-blue-800 border border-blue-200";
+    case "selected":
+      return "bg-purple-50 text-purple-800 border border-purple-200";
     case "screening":
       return "bg-amber-50 text-amber-800 border border-amber-200";
-    case "offer":
+    case "interview":
+      return "bg-cyan-50 text-cyan-800 border border-cyan-200";
+    case "offered":
       return "bg-green-50 text-green-800 border border-green-200";
     case "hired":
       return "bg-emerald-50 text-emerald-800 border border-emerald-200";
@@ -136,7 +141,7 @@ export const Candidates: React.FC = () => {
     location: "",
     visaStatus: "",
     experience: "",
-    profileStatus: "new",
+    profileStatus: "submitted",
     linkedinUrl: "",
     resumeUrl: "",
     jobPositionId: "",
@@ -286,7 +291,7 @@ export const Candidates: React.FC = () => {
       location: "",
       visaStatus: "",
       experience: "",
-      profileStatus: "new",
+      profileStatus: "submitted",
       linkedinUrl: "",
       resumeUrl: "",
       jobPositionId: "",
