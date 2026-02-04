@@ -150,12 +150,12 @@ export const Jobs: React.FC = () => {
         headers: apiHeaders,
       });
       if (!res.ok) {
-        throw new Error(`Failed to load job positions (${res.status})`);
+        throw new Error(`Failed to load position titles (${res.status})`);
       }
       const data = await res.json();
       setJobPositions(data.jobPositions || []);
     } catch (err) {
-      console.error("Failed to load job positions:", err);
+      console.error("Failed to load position titles:", err);
     }
   };
 
@@ -361,11 +361,11 @@ export const Jobs: React.FC = () => {
       );
       setPositionForm({ name: "", description: "" });
       setShowPositionModal(false);
-      setStatusMsg("Job position created successfully.");
+      setStatusMsg("Position title created successfully.");
       setTimeout(() => setStatusMsg(null), 3000);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to create job position",
+        err instanceof Error ? err.message : "Failed to create position title",
       );
     } finally {
       setSubmitting(false);
@@ -514,7 +514,7 @@ export const Jobs: React.FC = () => {
               </div>
               <div className="space-y-3">
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-                  Job Position
+                  Position Title
                 </p>
                 <p className="text-base font-medium text-gray-900">
                   {job.jobPositionName || "Not specified"}
@@ -669,7 +669,7 @@ export const Jobs: React.FC = () => {
                   onClick={() => setShowPositionModal(true)}
                   className="px-5 py-2.5 rounded-lg bg-white border-2 border-blue-600 text-sm text-blue-600 font-semibold hover:bg-blue-50 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
                 >
-                  + Create Job Position
+                  + Create Position Title
                 </button>
                 <button
                   onClick={() => setShowModal(true)}
@@ -811,7 +811,7 @@ export const Jobs: React.FC = () => {
                 </label>
 
                 <label className="flex flex-col gap-1 text-sm text-gray-700 md:col-span-2">
-                  Job Position (optional)
+                  Position Title (optional)
                   <select
                     className="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                     value={form.jobPositionId}
@@ -828,7 +828,7 @@ export const Jobs: React.FC = () => {
                   </select>
                   {jobPositions.length === 0 && (
                     <span className="text-xs text-gray-500 italic">
-                      No job positions created yet. Click "Create Job Position"
+                      No position titles created yet. Click "Create Position Title"
                       to add one.
                     </span>
                   )}
@@ -999,7 +999,7 @@ export const Jobs: React.FC = () => {
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-xl">
               <h2 className="text-xl font-bold text-gray-900">
-                Create Job Position
+                Create Position Title
               </h2>
               <p className="text-sm text-gray-600 mt-1">
                 Add a new Position Title for your job postings
