@@ -1534,10 +1534,11 @@ export const Candidates: React.FC = () => {
                 </div>
               )}
               <div className="flex items-center gap-2">
-                <span className="font-semibold">Job:</span>
+                <span className="font-semibold">Job ID:</span>
                 <span>
                   {selected.jobId
-                    ? jobs.find((j) => j.id === selected.jobId)?.title || "-"
+                    ? jobs.find((j) => j.id === selected.jobId)?.jobCode ||
+                      selected.jobId
                     : "-"}
                 </span>
               </div>

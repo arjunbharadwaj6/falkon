@@ -85,7 +85,9 @@ router.post('/', authRequired, async (req, res, next) => {
 
     const docRef = await db.collection(collections.jobs).add(jobData);
 
-    res.status(201).json({ job: { id: docRef.id, ...jobData } });
+    const createdJob = formatDatesInObject({ id: docRef.id, ...jobData });
+
+    res.status(201).json({ job: createdJob });
   } catch (error) {
     next(error);
   }
@@ -173,7 +175,9 @@ router.put('/:id', authRequired, async (req, res, next) => {
     });
 
     const updated = await jobRef.get();
-    res.json({ job: { id: updated.id, ...updated.data() } });
+    const updatedJob = formatDatesInObject({ id: updated.id, ...updated.data() });
+
+    res.json({ job: updatedJob });
   } catch (error) {
     next(error);
   }

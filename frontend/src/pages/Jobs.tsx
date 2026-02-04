@@ -70,6 +70,7 @@ export const Jobs: React.FC = () => {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pdfFileName, setPdfFileName] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [editingJobId, setEditingJobId] = useState<string | null>(null);
   const [showPositionModal, setShowPositionModal] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [showJobDetail, setShowJobDetail] = useState(false);
@@ -82,6 +83,8 @@ export const Jobs: React.FC = () => {
   const [deleting, setDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 9;
+
+  const isEditing = Boolean(editingJobId);
 
   const [positionForm, setPositionForm] = useState({
     name: "",
@@ -188,6 +191,7 @@ export const Jobs: React.FC = () => {
   const closeModal = () => {
     setShowModal(false);
     resetForm();
+    setEditingJobId(null);
     setError(null);
     setStatusMsg(null);
   };
@@ -200,7 +204,11 @@ export const Jobs: React.FC = () => {
     setError(null);
     setStatusMsg(null);
 
-    if (!form.title.trim()) {
+    const selectedJobPosition = jobPositions.find(
+      (pos) => pos.id === form.jobPositionId,
+    );
+
+    if (!selectedJobPosition) {
       setError("Job title is required");
       setSubmitting(false);
       return;
@@ -214,7 +222,7 @@ export const Jobs: React.FC = () => {
     }
 
     const payload: Record<string, unknown> = {
-      title: form.title.trim(),
+      title: selectedJobPosition.name.trim(),
       description: form.description.trim() || null,
       clientName: form.clientName.trim() || null,
       location: form.location.trim() || null,
@@ -256,8 +264,12 @@ export const Jobs: React.FC = () => {
     }
 
     try {
-      const res = await fetch(`${API_BASE}/api/jobs`, {
-        method: "POST",
+      const endpoint = isEditing
+        ? `${API_BASE}/api/jobs/${editingJobId}`
+        : `${API_BASE}/api/jobs`;
+
+      const res = await fetch(endpoint, {
+        method: isEditing ? "PUT" : "POST",
         headers: apiHeaders,
         body: JSON.stringify(payload),
       });
@@ -269,12 +281,24 @@ export const Jobs: React.FC = () => {
 
       const data = await res.json();
       const job: Job = data.job;
-      setJobs((prev) => [job, ...prev]);
+      setJobs((prev) =>
+        isEditing
+          ? prev.map((j) => (j.id === job.id ? job : j))
+          : [job, ...prev],
+      );
+
+      if (selectedJob?.id === job.id) {
+        setSelectedJob(job);
+      }
+
+      setEditingJobId(null);
       resetForm();
       closeModal();
-      setStatusMsg("Job posted successfully.");
+      setStatusMsg(
+        isEditing ? "Job updated successfully." : "Job posted successfully.",
+      );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to post job");
+      setError(err instanceof Error ? err.message : "Failed to save job");
     } finally {
       setSubmitting(false);
     }
@@ -790,6 +814,7 @@ export const Jobs: React.FC = () => {
               <div className="flex gap-3">
                 <button
                   onClick={() => {
+                    setEditingJobId(job.id);
                     resetForm();
                     setForm({
                       title: job.title,
@@ -804,6 +829,7 @@ export const Jobs: React.FC = () => {
                       jobPositionId: job.jobPositionId || "",
                     });
                     setShowJobDetail(false);
+                    setError(null);
                     setShowModal(true);
                   }}
                   className="px-5 py-3 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"
@@ -848,7 +874,12 @@ export const Jobs: React.FC = () => {
                   + Create Job Title
                 </button>
                 <button
-                  onClick={() => setShowModal(true)}
+                  onClick={() => {
+                    resetForm();
+                    setEditingJobId(null);
+                    setShowModal(true);
+                    setError(null);
+                  }}
                   className="px-6 py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-sm text-white font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                 >
                   + Post New Job
@@ -948,7 +979,9 @@ export const Jobs: React.FC = () => {
         <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-40 z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-xl">
-              <h2 className="text-2xl font-bold text-gray-900">Post New Job</h2>
+              <h2 className="text-2xl font-bold text-gray-900">
+                {isEditing ? "Edit Job" : "Post New Job"}
+              </h2>
             </div>
             <div className="px-6 py-5">
               {error && (
@@ -962,15 +995,16 @@ export const Jobs: React.FC = () => {
                 onSubmit={handleSubmit}
               >
                 <label className="flex flex-col gap-1 text-sm text-gray-700 md:col-span-2">
-                  Job Title (optional)
+                  Job Title *
                   <select
                     className="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                     value={form.jobPositionId}
                     onChange={(e) =>
                       setForm((f) => ({ ...f, jobPositionId: e.target.value }))
                     }
+                    required
                   >
-                    <option value="">-- Select Position --</option>
+                    <option value="">-- Select Job Title --</option>
                     {jobPositions.map((pos) => (
                       <option key={pos.id} value={pos.id}>
                         {pos.name}
@@ -983,19 +1017,6 @@ export const Jobs: React.FC = () => {
                       one.
                     </span>
                   )}
-                </label>
-
-                <label className="flex flex-col gap-1 text-sm text-gray-700 md:col-span-2">
-                  Job Title *
-                  <input
-                    className="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                    value={form.title}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, title: e.target.value }))
-                    }
-                    placeholder="e.g., Senior Software Engineer"
-                    required
-                  />
                 </label>
 
                 <label className="flex flex-col gap-1 text-sm text-gray-700 md:col-span-2">
@@ -1164,7 +1185,13 @@ export const Jobs: React.FC = () => {
                 onClick={handleSubmit}
                 className="px-6 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-sm text-white font-semibold hover:from-blue-700 hover:to-indigo-700 disabled:opacity-60 transition-all shadow-lg hover:shadow-xl"
               >
-                {submitting ? "Posting..." : "Post Job"}
+                {submitting
+                  ? isEditing
+                    ? "Saving..."
+                    : "Posting..."
+                  : isEditing
+                    ? "Save Changes"
+                    : "Post Job"}
               </button>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useMemo } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { Dashboard } from "./pages/Dashboard";
 import { Jobs } from "./pages/Jobs";
@@ -18,7 +19,15 @@ import { Reports } from "./pages/Reports";
 import { useAuth } from "./auth/AuthProvider";
 
 function App() {
-  const { token } = useAuth();
+  const { token, account } = useAuth();
+
+  const homePath = useMemo(() => {
+    if (!account) return "/dashboard";
+    const isSuperAdmin = account.role === "admin" && !account.parentAccountId;
+    if (isSuperAdmin) return "/approvals";
+    if (account.role === "admin") return "/dashboard";
+    return "/jobs";
+  }, [account]);
 
   return (
     <BrowserRouter>
@@ -42,11 +51,19 @@ function App() {
               element={
                 token ? (
                   <ProtectedRoute requireApproved={true}>
-                    <Dashboard />
+                    <Navigate to={homePath} replace />
                   </ProtectedRoute>
                 ) : (
                   <Landing />
                 )
+              }
+            />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={["admin"]} requireApproved={true}>
+                  <Dashboard />
+                </ProtectedRoute>
               }
             />
             <Route
@@ -132,7 +149,7 @@ function App() {
             />
             <Route
               path="*"
-              element={<Navigate to={token ? "/" : "/"} replace />}
+              element={<Navigate to={token ? homePath : "/"} replace />}
             />
           </Routes>
         </main>
