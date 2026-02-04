@@ -170,7 +170,7 @@ export const Candidates: React.FC = () => {
     minExperience: "",
     maxExperience: "",
   });
-  const [filtersOpen, setFiltersOpen] = useState(true);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   // CSV Import state
   const [showCsvModal, setShowCsvModal] = useState(false);
