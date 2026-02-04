@@ -1002,7 +1002,7 @@ export const Jobs: React.FC = () => {
                 Create Job Position
               </h2>
               <p className="text-sm text-gray-600 mt-1">
-                Add a new position type for your job postings
+                Add a new Position Title for your job postings
               </p>
             </div>
             <div className="px-6 py-5">
@@ -1014,7 +1014,7 @@ export const Jobs: React.FC = () => {
               )}
               <form className="space-y-4" onSubmit={handleCreatePosition}>
                 <label className="flex flex-col gap-1 text-sm text-gray-700">
-                  Position Name *
+                  Position Title *
                   <input
                     className="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                     value={positionForm.name}
@@ -1037,7 +1037,7 @@ export const Jobs: React.FC = () => {
                         description: e.target.value,
                       }))
                     }
-                    placeholder="Brief description of this position type"
+                    placeholder="Brief description of this Position Title"
                   />
                 </label>
               </form>
