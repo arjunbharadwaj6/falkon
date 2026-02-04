@@ -867,7 +867,7 @@ export const Candidates: React.FC = () => {
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-semibold text-gray-700">
-                Job Position
+                Position Type
               </label>
               <select
                 value={filters.jobPositionId}
@@ -1300,7 +1300,7 @@ export const Candidates: React.FC = () => {
                 </label>
 
                 <label className="flex flex-col text-sm text-gray-800 gap-1">
-                  Job Position
+                  Position Type
                   <select
                     className="border border-gray-300 bg-white text-gray-900 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={form.jobPositionId}
@@ -1320,7 +1320,7 @@ export const Candidates: React.FC = () => {
                 </label>
 
                 <label className="flex flex-col text-sm text-gray-800 gap-1">
-                  Specific Job
+                  Job Opening
                   <select
                     className="border border-gray-300 bg-white text-gray-900 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={form.jobId}
@@ -1328,7 +1328,7 @@ export const Candidates: React.FC = () => {
                       setForm({ ...form, jobId: e.target.value })
                     }
                   >
-                    <option value="">-- Select Job (Optional) --</option>
+                    <option value="">-- Select Job Opening (Optional) --</option>
                     {jobs.map((job) => (
                       <option key={job.id} value={job.id}>
                         {job.jobCode} - {job.title}
@@ -1559,7 +1559,7 @@ export const Candidates: React.FC = () => {
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="font-semibold">Job Position:</span>
+                <span className="font-semibold">Position Type:</span>
                 <span>
                   {selected.jobPositionId
                     ? jobPositions.find((p) => p.id === selected.jobPositionId)
