@@ -132,6 +132,9 @@ export const Candidates: React.FC = () => {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(
+    new Set(),
+  );
 
   const [form, setForm] = useState({
     id: "",
@@ -478,6 +481,68 @@ export const Candidates: React.FC = () => {
     }
   };
 
+  const handleDeleteSelected = async () => {
+    if (selectedCandidates.size === 0) return;
+
+    const confirmed = window.confirm(
+      `Delete ${selectedCandidates.size} candidate(s)? This action cannot be undone.`,
+    );
+    if (!confirmed) return;
+
+    try {
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const candidateId of selectedCandidates) {
+        try {
+          const res = await fetch(`${API_BASE}/api/candidates/${candidateId}`, {
+            method: "DELETE",
+            headers: apiHeaders,
+          });
+
+          if (res.ok) {
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        } catch {
+          errorCount++;
+        }
+      }
+
+      setCandidates((prev) =>
+        prev.filter((c) => !selectedCandidates.has(c.id)),
+      );
+      setSelectedCandidates(new Set());
+      setError(
+        `Deleted: ${successCount} candidate(s)${errorCount > 0 ? `, Failed: ${errorCount}` : ""}`,
+      );
+      fetchStats();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to delete candidates",
+      );
+    }
+  };
+
+  const handleSelectCandidate = (candidateId: string) => {
+    const newSelected = new Set(selectedCandidates);
+    if (newSelected.has(candidateId)) {
+      newSelected.delete(candidateId);
+    } else {
+      newSelected.add(candidateId);
+    }
+    setSelectedCandidates(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedCandidates.size === filteredCandidates.length) {
+      setSelectedCandidates(new Set());
+    } else {
+      setSelectedCandidates(new Set(filteredCandidates.map((c) => c.id)));
+    }
+  };
+
   const handleView = (candidate: Candidate) => {
     setSelected(candidate);
     setShowViewModal(true);
@@ -694,7 +759,7 @@ export const Candidates: React.FC = () => {
             context.
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap">
           <button
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md shadow-blue-500/30"
             onClick={() => {
@@ -710,6 +775,14 @@ export const Candidates: React.FC = () => {
           >
             📤 Import CSV
           </button>
+          {selectedCandidates.size > 0 && (
+            <button
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 shadow-md shadow-red-500/30"
+              onClick={handleDeleteSelected}
+            >
+              🗑️ Delete ({selectedCandidates.size})
+            </button>
+          )}
         </div>
       </div>
 
@@ -919,6 +992,17 @@ export const Candidates: React.FC = () => {
         <table className="w-full">
           <thead className="bg-gray-50/80 border-b border-gray-200">
             <tr>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 w-12">
+                <input
+                  type="checkbox"
+                  checked={
+                    selectedCandidates.size === filteredCandidates.length &&
+                    filteredCandidates.length > 0
+                  }
+                  onChange={handleSelectAll}
+                  className="w-4 h-4 rounded border-gray-300 cursor-pointer"
+                />
+              </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
                 Name
               </th>
@@ -955,7 +1039,7 @@ export const Candidates: React.FC = () => {
               <tr>
                 <td
                   className="px-6 py-4 text-sm text-gray-500"
-                  colSpan={isStaff ? 8 : 9}
+                  colSpan={isStaff ? 9 : 10}
                 >
                   No candidates found. Adjust filters or add one above.
                 </td>
@@ -966,6 +1050,14 @@ export const Candidates: React.FC = () => {
                   key={candidate.id}
                   className="hover:bg-blue-50/40 transition-colors"
                 >
+                  <td className="px-4 py-4 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={selectedCandidates.has(candidate.id)}
+                      onChange={() => handleSelectCandidate(candidate.id)}
+                      className="w-4 h-4 rounded border-gray-300 cursor-pointer"
+                    />
+                  </td>
                   <td className="px-6 py-4 text-sm text-slate-900 font-semibold">
                     {candidate.name}
                   </td>
