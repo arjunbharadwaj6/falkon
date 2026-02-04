@@ -867,7 +867,7 @@ export const Candidates: React.FC = () => {
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-semibold text-gray-700">
-                Position Title
+                Job Title
               </label>
               <select
                 value={filters.jobPositionId}
@@ -1027,7 +1027,7 @@ export const Candidates: React.FC = () => {
                 Profile Status
               </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                Position Title
+                Job Title
               </th>
               {!isStaff && (
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
@@ -1285,7 +1285,7 @@ export const Candidates: React.FC = () => {
                 </label>
 
                 <label className="flex flex-col text-sm text-gray-800 gap-1">
-                  Position Title
+                  Job Title
                   <select
                     className="border border-gray-300 bg-white text-gray-900 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={form.jobPositionId}
@@ -1294,7 +1294,7 @@ export const Candidates: React.FC = () => {
                     }
                   >
                     <option value="">
-                      -- Select Position Title (Optional) --
+                      -- Select Job Title (Optional) --
                     </option>
                     {jobPositions.map((position) => (
                       <option key={position.id} value={position.id}>
@@ -1544,7 +1544,7 @@ export const Candidates: React.FC = () => {
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="font-semibold">Position Title:</span>
+                <span className="font-semibold">Job Title:</span>
                 <span>
                   {selected.jobPositionId
                     ? jobPositions.find((p) => p.id === selected.jobPositionId)
