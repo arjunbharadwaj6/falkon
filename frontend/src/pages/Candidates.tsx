@@ -1293,9 +1293,7 @@ export const Candidates: React.FC = () => {
                       setForm({ ...form, jobPositionId: e.target.value })
                     }
                   >
-                    <option value="">
-                      -- Select Job Title (Optional) --
-                    </option>
+                    <option value="">-- Select Job Title (Optional) --</option>
                     {jobPositions.map((position) => (
                       <option key={position.id} value={position.id}>
                         {position.name}

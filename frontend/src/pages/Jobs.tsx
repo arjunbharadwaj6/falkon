@@ -786,31 +786,6 @@ export const Jobs: React.FC = () => {
                 onSubmit={handleSubmit}
               >
                 <label className="flex flex-col gap-1 text-sm text-gray-700 md:col-span-2">
-                  Job Title
-                  <input
-                    className="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                    value={form.title}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, title: e.target.value }))
-                    }
-                    required
-                  />
-                </label>
-
-                <label className="flex flex-col gap-1 text-sm text-gray-700 md:col-span-2">
-                  Job Description (text)
-                  <textarea
-                    className="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                    rows={4}
-                    value={form.description}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, description: e.target.value }))
-                    }
-                    placeholder="Overview, responsibilities, requirements"
-                  />
-                </label>
-
-                <label className="flex flex-col gap-1 text-sm text-gray-700 md:col-span-2">
                   Job Title (optional)
                   <select
                     className="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
@@ -828,10 +803,23 @@ export const Jobs: React.FC = () => {
                   </select>
                   {jobPositions.length === 0 && (
                     <span className="text-xs text-gray-500 italic">
-                      No job titles created yet. Click "Create Job Title"
-                      to add one.
+                      No job titles created yet. Click "Create Job Title" to add
+                      one.
                     </span>
                   )}
+                </label>
+
+                <label className="flex flex-col gap-1 text-sm text-gray-700 md:col-span-2">
+                  Job Description (text)
+                  <textarea
+                    className="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    rows={4}
+                    value={form.description}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, description: e.target.value }))
+                    }
+                    placeholder="Overview, responsibilities, requirements"
+                  />
                 </label>
 
                 <label className="flex flex-col gap-1 text-sm text-gray-700 md:col-span-2">
