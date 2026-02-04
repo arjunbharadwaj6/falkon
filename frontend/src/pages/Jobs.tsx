@@ -986,6 +986,19 @@ export const Jobs: React.FC = () => {
                 </label>
 
                 <label className="flex flex-col gap-1 text-sm text-gray-700 md:col-span-2">
+                  Job Title *
+                  <input
+                    className="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    value={form.title}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, title: e.target.value }))
+                    }
+                    placeholder="e.g., Senior Software Engineer"
+                    required
+                  />
+                </label>
+
+                <label className="flex flex-col gap-1 text-sm text-gray-700 md:col-span-2">
                   Job Description (text)
                   <textarea
                     className="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
