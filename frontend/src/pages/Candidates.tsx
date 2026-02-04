@@ -335,9 +335,12 @@ export const Candidates: React.FC = () => {
     setSubmitting(true);
     setError(null);
 
+    // Force profileStatus to "submitted" for non-admin users
+    const profileStatus = isStaff ? "submitted" : form.profileStatus;
+
     const payload: Record<string, unknown> = {
       name: form.name.trim(),
-      profileStatus: form.profileStatus,
+      profileStatus,
     };
 
     if (!payload.name) {
@@ -705,6 +708,11 @@ export const Candidates: React.FC = () => {
         if (!payload.name) {
           errorCount++;
           continue;
+        }
+
+        // Force profileStatus to "submitted" for non-admin users
+        if (isStaff) {
+          payload.profileStatus = "submitted";
         }
 
         try {
