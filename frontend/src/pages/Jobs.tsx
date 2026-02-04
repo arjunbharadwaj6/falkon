@@ -76,6 +76,10 @@ export const Jobs: React.FC = () => {
   const [editingPositions, setEditingPositions] = useState(false);
   const [editPositionsValue, setEditPositionsValue] = useState("");
   const [updatingPositions, setUpdatingPositions] = useState(false);
+  const [editingStatus, setEditingStatus] = useState(false);
+  const [editStatusValue, setEditStatusValue] = useState("");
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 9;
 
@@ -326,6 +330,93 @@ export const Jobs: React.FC = () => {
     }
   };
 
+  const handleUpdateStatus = async (jobId: string) => {
+    if (!token || !isAdmin) return;
+
+    setUpdatingStatus(true);
+    setError(null);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/jobs/${jobId}`, {
+        method: "PUT",
+        headers: apiHeaders,
+        body: JSON.stringify({ status: editStatusValue }),
+      });
+
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(errBody.error || `Request failed (${res.status})`);
+      }
+
+      const data = await res.json();
+      const updatedJob: Job = data.job;
+
+      // Update jobs list
+      setJobs((prev) =>
+        prev.map((j) => (j.id === updatedJob.id ? updatedJob : j)),
+      );
+
+      // Update selected job if it's the one being edited
+      if (selectedJob?.id === updatedJob.id) {
+        setSelectedJob(updatedJob);
+      }
+
+      setEditingStatus(false);
+      setEditStatusValue("");
+      setStatusMsg("Status updated successfully.");
+      setTimeout(() => setStatusMsg(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update status");
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const handleDeleteJob = async (jobId: string) => {
+    if (!token || !isAdmin) return;
+
+    if (
+      !confirm(
+        "Are you sure you want to delete this job? This action cannot be undone.",
+      )
+    ) {
+      return;
+    }
+
+    setDeleting(true);
+    setError(null);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/jobs/${jobId}`, {
+        method: "DELETE",
+        headers: apiHeaders,
+      });
+
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(errBody.error || `Request failed (${res.status})`);
+      }
+
+      // Remove from jobs list
+      setJobs((prev) => prev.filter((j) => j.id !== jobId));
+
+      // Close the detail modal
+      setShowJobDetail(false);
+      setSelectedJob(null);
+      setEditingPositions(false);
+      setEditingStatus(false);
+      setEditPositionsValue("");
+      setEditStatusValue("");
+
+      setStatusMsg("Job deleted successfully.");
+      setTimeout(() => setStatusMsg(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete job");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleCreatePosition = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token || !isAdmin) return;
@@ -476,9 +567,59 @@ export const Jobs: React.FC = () => {
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
                   Status
                 </p>
-                <p className="text-base font-medium text-gray-900 capitalize">
-                  {job.status === "onhold" ? "On Hold" : job.status}
-                </p>
+                {isAdmin && editingStatus ? (
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={editStatusValue}
+                      onChange={(e) => setEditStatusValue(e.target.value)}
+                      className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      autoFocus
+                    >
+                      {statusOptions.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => handleUpdateStatus(job.id)}
+                      disabled={updatingStatus}
+                      className="px-3 py-1 rounded bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 disabled:opacity-50 transition-all"
+                    >
+                      {updatingStatus ? "Saving..." : "Save"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingStatus(false);
+                        setEditStatusValue("");
+                        setError(null);
+                      }}
+                      disabled={updatingStatus}
+                      className="px-3 py-1 rounded bg-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-300 disabled:opacity-50 transition-all"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <p className="text-base font-medium text-gray-900 capitalize">
+                      {job.status === "onhold" ? "On Hold" : job.status}
+                    </p>
+                    {isAdmin && (
+                      <button
+                        onClick={() => {
+                          setEditingStatus(true);
+                          setEditStatusValue(job.status);
+                          setError(null);
+                        }}
+                        className="text-blue-600 hover:text-blue-700 text-xs font-semibold hover:underline"
+                        title="Edit status"
+                      >
+                        ✏️ Edit
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="space-y-3">
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
@@ -631,18 +772,53 @@ export const Jobs: React.FC = () => {
           </div>
 
           {/* Footer */}
-          <div className="sticky bottom-0 bg-white border-t border-gray-200 px-8 py-5 rounded-b-xl">
+          <div className="sticky bottom-0 bg-white border-t border-gray-200 px-8 py-5 rounded-b-xl flex gap-3 justify-between">
             <button
               onClick={() => {
                 setShowJobDetail(false);
                 setEditingPositions(false);
+                setEditingStatus(false);
                 setEditPositionsValue("");
+                setEditStatusValue("");
                 setError(null);
               }}
-              className="w-full px-5 py-3 rounded-lg bg-gray-100 text-sm text-gray-700 font-semibold hover:bg-gray-200 transition-all shadow-sm hover:shadow-md"
+              className="flex-1 px-5 py-3 rounded-lg bg-gray-100 text-sm text-gray-700 font-semibold hover:bg-gray-200 transition-all shadow-sm hover:shadow-md"
             >
               Close
             </button>
+            {isAdmin && (
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    resetForm();
+                    setForm({
+                      title: job.title,
+                      description: job.description || "",
+                      clientName: job.clientName || "",
+                      location: job.location || "",
+                      workType: job.workType,
+                      visaType: job.visaType || "",
+                      positions: String(job.positions),
+                      status: job.status,
+                      descriptionPdfUrl: job.descriptionPdfUrl || "",
+                      jobPositionId: job.jobPositionId || "",
+                    });
+                    setShowJobDetail(false);
+                    setShowModal(true);
+                  }}
+                  className="px-5 py-3 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"
+                >
+                  ✏️ Edit Job
+                </button>
+                <button
+                  onClick={() => handleDeleteJob(job.id)}
+                  disabled={deleting}
+                  className="px-5 py-3 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50 transition-all shadow-md hover:shadow-lg"
+                >
+                  {deleting ? "Deleting..." : "🗑️ Delete Job"}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
