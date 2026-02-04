@@ -1018,19 +1018,16 @@ export const Candidates: React.FC = () => {
                 Email
               </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                Location
+                Phone
               </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                Visa Status
+                Location
               </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
                 Profile Status
               </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                Job Position
-              </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                Job
+                Position Title
               </th>
               {!isStaff && (
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
@@ -1047,7 +1044,7 @@ export const Candidates: React.FC = () => {
               <tr>
                 <td
                   className="px-6 py-4 text-sm text-gray-500"
-                  colSpan={isStaff ? 9 : 10}
+                  colSpan={isStaff ? 8 : 9}
                 >
                   No candidates found. Adjust filters or add one above.
                 </td>
@@ -1073,12 +1070,10 @@ export const Candidates: React.FC = () => {
                     {candidate.email || "-"}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-700">
-                    {candidate.location || "-"}
+                    {candidate.phone || "-"}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-700">
-                    {candidate.visaStatus
-                      ? toLabel(candidate.visaStatus, visaStatusOptions)
-                      : "-"}
+                    {candidate.location || "-"}
                   </td>
                   <td className="px-6 py-4">
                     <span
@@ -1092,16 +1087,6 @@ export const Candidates: React.FC = () => {
                       ? jobPositions.find(
                           (p) => p.id === candidate.jobPositionId,
                         )?.name || "-"
-                      : "-"}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-700">
-                    {candidate.jobId
-                      ? (() => {
-                          const job = jobs.find(
-                            (j) => j.id === candidate.jobId,
-                          );
-                          return job ? `${job.jobCode} - ${job.title}` : "-";
-                        })()
                       : "-"}
                   </td>
                   {!isStaff && (
