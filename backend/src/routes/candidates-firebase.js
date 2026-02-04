@@ -5,7 +5,7 @@ import { formatDatesInObject } from '../utils/dateFormatter.js';
 
 const router = express.Router();
 
-const allowedProfileStatuses = ['new', 'screening', 'interview', 'offer', 'hired', 'rejected', 'on-hold'];
+const allowedProfileStatuses = ['submitted', 'selected', 'screening', 'interview', 'offered', 'hired', 'rejected', 'on-hold'];
 
 // Protect all candidate routes
 router.use(authRequired);
@@ -16,15 +16,19 @@ const tenantAccountId = (req) => req.user.tenantAccountId;
 // Create candidate
 router.post('/', async (req, res, next) => {
   try {
-    const { name, email, phone, location, visaStatus, experience, profileStatus = 'new', linkedinUrl, resumeUrl, jobId, jobPositionId } = req.body;
+    const { name, email, phone, location, visaStatus, experience, profileStatus = 'submitted', linkedinUrl, resumeUrl, jobId, jobPositionId } = req.body;
     const accountId = tenantAccountId(req);
     const createdBy = req.user.accountId;
+    const isAdminUser = isAdmin(req);
 
     if (!name) {
       return res.status(400).json({ error: 'name is required' });
     }
 
-    if (!allowedProfileStatuses.includes(profileStatus)) {
+    // Force profileStatus to 'submitted' for non-admin users
+    let finalProfileStatus = isAdminUser ? profileStatus : 'submitted';
+
+    if (!allowedProfileStatuses.includes(finalProfileStatus)) {
       return res.status(400).json({ error: `profileStatus must be one of: ${allowedProfileStatuses.join(', ')}` });
     }
 
@@ -46,7 +50,7 @@ router.post('/', async (req, res, next) => {
       location: location || null,
       visaStatus: visaStatus || null,
       experience: experience ?? null,
-      profileStatus,
+      profileStatus: finalProfileStatus,
       linkedinUrl: linkedinUrl || null,
       resumeUrl: resumeUrl || null,
       jobId: jobId || null,
@@ -77,7 +81,8 @@ router.put('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
     const accountId = tenantAccountId(req);
-    const onlySelf = !isAdmin(req);
+    const isAdminUser = isAdmin(req);
+    const onlySelf = !isAdminUser;
     const { name, email, phone, location, visaStatus, experience, profileStatus, linkedinUrl, resumeUrl, jobId, jobPositionId } = req.body;
 
     // Get candidate document
@@ -116,10 +121,12 @@ router.put('/:id', async (req, res, next) => {
     }
 
     if (profileStatus !== undefined) {
-      if (!allowedProfileStatuses.includes(profileStatus)) {
+      // Force profileStatus to 'submitted' for non-admin users, even on updates
+      const finalStatus = isAdminUser ? profileStatus : 'submitted';
+      if (!allowedProfileStatuses.includes(finalStatus)) {
         return res.status(400).json({ error: `profileStatus must be one of: ${allowedProfileStatuses.join(', ')}` });
       }
-      updates.profileStatus = profileStatus;
+      updates.profileStatus = finalStatus;
     }
 
     if (linkedinUrl !== undefined) updates.linkedinUrl = linkedinUrl;
