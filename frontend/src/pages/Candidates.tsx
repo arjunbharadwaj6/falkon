@@ -338,28 +338,83 @@ export const Candidates: React.FC = () => {
     // Force profileStatus to "submitted" for non-admin users
     const profileStatus = isStaff ? "submitted" : form.profileStatus;
 
-    const payload: Record<string, unknown> = {
+    const trimmed = {
       name: form.name.trim(),
+      email: form.email.trim(),
+      phone: form.phone.trim(),
+      location: form.location.trim(),
+      visaStatus: form.visaStatus,
+      experience: form.experience.trim(),
       profileStatus,
+      linkedinUrl: form.linkedinUrl.trim(),
+      jobPositionId: form.jobPositionId,
+      jobId: form.jobId,
+      additionalComments: form.additionalComments.trim(),
+      createdBy: form.createdBy,
     };
 
-    if (!payload.name) {
-      setError("Name is required");
+    const requireAll = !form.id; // enforce required fields on create
+
+    const missingField = (() => {
+      if (!trimmed.name) return "Name";
+      if (requireAll) {
+        if (!trimmed.email) return "Email";
+        if (!trimmed.phone) return "Phone";
+        if (!trimmed.location) return "Location";
+        if (!trimmed.visaStatus) return "Visa Status";
+        if (!trimmed.experience) return "Experience";
+        if (!trimmed.jobPositionId) return "Job Title";
+        if (!trimmed.jobId) return "Job ID";
+      }
+      return null;
+    })();
+
+    if (missingField) {
+      setError(`${missingField} is required`);
       setSubmitting(false);
       return;
     }
 
-    if (form.email) payload.email = form.email.trim();
-    if (form.phone) payload.phone = form.phone.trim();
-    if (form.location) payload.location = form.location.trim();
-    if (form.visaStatus) payload.visaStatus = form.visaStatus;
-    if (form.experience) payload.experience = Number(form.experience);
-    if (form.linkedinUrl) payload.linkedinUrl = form.linkedinUrl.trim();
-    if (form.jobPositionId) payload.jobPositionId = form.jobPositionId;
-    if (form.jobId) payload.jobId = form.jobId;
-    if (form.additionalComments)
-      payload.additionalComments = form.additionalComments.trim();
-    if (form.createdBy) payload.createdBy = form.createdBy;
+    const experienceValue = trimmed.experience
+      ? Number(trimmed.experience)
+      : null;
+    if (experienceValue !== null) {
+      if (Number.isNaN(experienceValue) || experienceValue < 0) {
+        setError("Experience must be a non-negative number");
+        setSubmitting(false);
+        return;
+      }
+    }
+
+    const payload: Record<string, unknown> = {
+      name: trimmed.name,
+      profileStatus,
+    };
+
+    const setIfPresent = (
+      key: string,
+      value: string | number | null | undefined,
+    ) => {
+      if (value !== null && value !== undefined && value !== "") {
+        payload[key] = value;
+      }
+    };
+
+    setIfPresent("email", trimmed.email);
+    setIfPresent("phone", trimmed.phone);
+    setIfPresent("location", trimmed.location);
+    setIfPresent("visaStatus", trimmed.visaStatus);
+    if (experienceValue !== null) setIfPresent("experience", experienceValue);
+    setIfPresent("linkedinUrl", trimmed.linkedinUrl);
+    setIfPresent("jobPositionId", trimmed.jobPositionId);
+    setIfPresent("jobId", trimmed.jobId);
+    setIfPresent("additionalComments", trimmed.additionalComments);
+
+    if (!isStaff) {
+      payload.createdBy = trimmed.createdBy;
+    } else if (account?.id) {
+      payload.createdBy = account.id;
+    }
 
     // Upload resume file if selected
     if (resumeFile) {
@@ -1200,6 +1255,7 @@ export const Candidates: React.FC = () => {
                       setForm({ ...form, email: e.target.value })
                     }
                     placeholder="john@example.com"
+                    required={!form.id}
                   />
                 </label>
 
@@ -1213,6 +1269,7 @@ export const Candidates: React.FC = () => {
                       setForm({ ...form, phone: e.target.value })
                     }
                     placeholder="+1 (555) 123-4567"
+                    required={!form.id}
                   />
                 </label>
 
@@ -1225,6 +1282,7 @@ export const Candidates: React.FC = () => {
                       setForm({ ...form, location: e.target.value })
                     }
                     placeholder="San Francisco, CA"
+                    required={!form.id}
                   />
                 </label>
 
@@ -1236,6 +1294,7 @@ export const Candidates: React.FC = () => {
                     onChange={(e) =>
                       setForm({ ...form, visaStatus: e.target.value })
                     }
+                    required={!form.id}
                   >
                     <option value="">-- Select --</option>
                     {visaStatusOptions.map((status) => (
@@ -1258,6 +1317,7 @@ export const Candidates: React.FC = () => {
                       setForm({ ...form, experience: e.target.value })
                     }
                     placeholder="e.g., 5"
+                    required={!form.id}
                   />
                 </label>
 
@@ -1270,6 +1330,7 @@ export const Candidates: React.FC = () => {
                       setForm({ ...form, profileStatus: e.target.value })
                     }
                     disabled={isStaff}
+                    required={!form.id}
                   >
                     {profileStatusOptions.map((status) => (
                       <option key={status.value} value={status.value}>
@@ -1285,21 +1346,16 @@ export const Candidates: React.FC = () => {
                 </label>
 
                 <label className="flex flex-col text-sm text-gray-800 gap-1">
-                  Job Title
-                  <select
-                    className="border border-gray-300 bg-white text-gray-900 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={form.jobPositionId}
-                    onChange={(e) =>
-                      setForm({ ...form, jobPositionId: e.target.value })
+                  Job Title (auto)
+                  <input
+                    className="border border-gray-300 bg-gray-100 text-gray-900 rounded px-3 py-2 focus:outline-none"
+                    value={
+                      jobPositions.find((p) => p.id === form.jobPositionId)
+                        ?.name || "Select a Job ID first"
                     }
-                  >
-                    <option value="">-- Select Job Title (Optional) --</option>
-                    {jobPositions.map((position) => (
-                      <option key={position.id} value={position.id}>
-                        {position.name}
-                      </option>
-                    ))}
-                  </select>
+                    readOnly
+                    aria-readonly="true"
+                  />
                 </label>
 
                 <label className="flex flex-col text-sm text-gray-800 gap-1">
@@ -1307,11 +1363,20 @@ export const Candidates: React.FC = () => {
                   <select
                     className="border border-gray-300 bg-white text-gray-900 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={form.jobId}
-                    onChange={(e) =>
-                      setForm({ ...form, jobId: e.target.value })
-                    }
+                    onChange={(e) => {
+                      const newJobId = e.target.value;
+                      const matchedJob = jobs.find(
+                        (job) => job.id === newJobId,
+                      );
+                      setForm({
+                        ...form,
+                        jobId: newJobId,
+                        jobPositionId: matchedJob?.jobPositionId || "",
+                      });
+                    }}
+                    required={!form.id}
                   >
-                    <option value="">-- Select Job ID (Optional) --</option>
+                    <option value="">-- Select Job ID --</option>
                     {jobs.map((job) => (
                       <option key={job.id} value={job.id}>
                         {job.jobCode} - {job.title}
