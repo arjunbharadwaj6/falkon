@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
 import Papa from "papaparse";
 
@@ -205,7 +205,7 @@ export const Candidates: React.FC = () => {
     [token],
   );
 
-  const fetchCandidates = async () => {
+  const fetchCandidates = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -224,9 +224,9 @@ export const Candidates: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [apiHeaders]);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     if (!token) return;
     try {
       const res = await fetch(`${API_BASE}/api/candidates/stats/summary`, {
@@ -242,9 +242,9 @@ export const Candidates: React.FC = () => {
     } catch (err) {
       console.error("Failed to fetch stats", err);
     }
-  };
+  }, [token]);
 
-  const fetchJobs = async () => {
+  const fetchJobs = useCallback(async () => {
     if (!token) return;
     try {
       const res = await fetch(`${API_BASE}/api/jobs`, {
@@ -252,17 +252,17 @@ export const Candidates: React.FC = () => {
       });
       if (res.ok) {
         const data = await res.json();
-        const activeJobs = (data.jobs || []).filter(
-          (job: any) => job.status === "active",
+        const activeJobs: Job[] = (data.jobs || []).filter(
+          (job: Job) => job.status === "active",
         );
         setJobs(activeJobs);
       }
     } catch (err) {
       console.error("Failed to fetch jobs", err);
     }
-  };
+  }, [apiHeaders, token]);
 
-  const fetchJobPositions = async () => {
+  const fetchJobPositions = useCallback(async () => {
     if (!token) return;
     try {
       const res = await fetch(`${API_BASE}/api/jobPositions`, {
@@ -275,9 +275,9 @@ export const Candidates: React.FC = () => {
     } catch (err) {
       console.error("Failed to fetch job positions", err);
     }
-  };
+  }, [apiHeaders, token]);
 
-  const fetchRecruiters = async () => {
+  const fetchRecruiters = useCallback(async () => {
     if (!token) return;
     try {
       const res = await fetch(`${API_BASE}/auth/accounts`, {
@@ -291,7 +291,7 @@ export const Candidates: React.FC = () => {
     } catch (err) {
       console.error("Failed to fetch recruiters", err);
     }
-  };
+  }, [apiHeaders, token]);
 
   useEffect(() => {
     if (token) {
@@ -303,7 +303,15 @@ export const Candidates: React.FC = () => {
         fetchRecruiters();
       }
     }
-  }, [token]);
+  }, [
+    fetchCandidates,
+    fetchJobs,
+    fetchJobPositions,
+    fetchRecruiters,
+    fetchStats,
+    isStaff,
+    token,
+  ]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -503,8 +511,8 @@ export const Candidates: React.FC = () => {
       resumeUrl: candidate.resumeUrl || "",
       jobPositionId: candidate.jobPositionId || "",
       jobId: candidate.jobId || "",
-      additionalComments: (candidate as any).additionalComments || "",
-      createdBy: (candidate as any).createdBy || "",
+      additionalComments: candidate.additionalComments || "",
+      createdBy: candidate.createdBy || "",
     });
     setShowModal(true);
   };
@@ -1619,7 +1627,7 @@ export const Candidates: React.FC = () => {
               <div className="flex flex-col gap-2">
                 <span className="font-semibold">Additional Comments:</span>
                 <span className="bg-gray-50 p-2 rounded text-xs whitespace-pre-wrap">
-                  {(selected as any).additionalComments || "-"}
+                  {selected.additionalComments || "-"}
                 </span>
               </div>
               {(selected.createdByUsername || selected.createdByEmail) && (

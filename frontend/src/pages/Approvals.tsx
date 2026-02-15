@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -30,7 +30,7 @@ export const Approvals: React.FC = () => {
     [token],
   );
 
-  const loadPending = async () => {
+  const loadPending = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -48,11 +48,11 @@ export const Approvals: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [headers]);
 
   useEffect(() => {
     if (isSuperAdmin) loadPending();
-  }, [isSuperAdmin]);
+  }, [isSuperAdmin, loadPending]);
 
   const approve = async (id: string) => {
     setActionBusy(id);

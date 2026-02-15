@@ -23,7 +23,7 @@ type Account = {
 type AuthContextType = {
   token: string | null;
   account: Account | null;
-  login: (identifier: string, password: string) => Promise<void>;
+  login: (identifier: string, password: string) => Promise<Account>;
   signup: (
     companyName: string,
     email: string,
@@ -151,16 +151,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const accountData = accountSnap.data();
 
+      const idToken = await userCredential.user.getIdToken();
+
+      const acc: Account = {
+        id: userCredential.user.uid,
+        email: userCredential.user.email || email,
+        companyName: accountData.companyName,
+        username: accountData.username,
+        role: accountData.role || "admin",
+        parentAccountId: accountData.parentAccountId,
+        isApproved: accountData.isApproved !== false,
+      };
+
       // Check if account is approved
-      if (accountData.isApproved === false) {
+      if (acc.isApproved === false) {
         await signOut(auth);
         throw new Error(
           "Your account is pending super admin approval. Please try again later.",
         );
       }
-    } catch (error: any) {
+
+      setToken(idToken);
+      setAccount(acc);
+      setFirebaseUser(userCredential.user);
+      localStorage.setItem("auth_token", idToken);
+      localStorage.setItem("auth_account", JSON.stringify(acc));
+
+      return acc;
+    } catch (error: unknown) {
       console.error("Login error:", error);
-      throw new Error(error.message || "Invalid credentials");
+      if (error instanceof Error) {
+        throw new Error(error.message || "Invalid credentials");
+      }
+      throw new Error("Invalid credentials");
     }
   };
 
@@ -193,9 +216,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       throw new Error(
         "Account created successfully! Please wait for super admin approval to log in.",
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Signup error:", error);
-      throw new Error(error.message || "Signup failed");
+      if (error instanceof Error) {
+        throw new Error(error.message || "Signup failed");
+      }
+      throw new Error("Signup failed");
     }
   };
 
@@ -223,6 +249,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = (): AuthContextType => {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");

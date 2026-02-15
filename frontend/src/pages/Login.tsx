@@ -6,8 +6,7 @@ export const Login: React.FC = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const redirectTo =
-    (location.state as { from?: string } | undefined)?.from || "/";
+  const redirectTo = (location.state as { from?: string } | undefined)?.from;
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -20,8 +19,15 @@ export const Login: React.FC = () => {
     setError(null);
     setLoading(true);
     try {
-      await login(identifier, password);
-      navigate(redirectTo, { replace: true });
+      const acc = await login(identifier, password);
+      const isSuperAdmin = acc.role === "admin" && !acc.parentAccountId;
+      const home = isSuperAdmin
+        ? "/super-dashboard"
+        : acc.role === "admin"
+          ? "/dashboard"
+          : "/jobs";
+      const target = isSuperAdmin ? home : redirectTo || home;
+      navigate(target, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {

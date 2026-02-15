@@ -17,6 +17,7 @@ import { ProtectedRoute } from "./auth/ProtectedRoute";
 import { Landing } from "./pages/Landing";
 import { Reports } from "./pages/Reports";
 import { useAuth } from "./auth/AuthProvider";
+import { SuperDashboard } from "./pages/SuperDashboard";
 
 function App() {
   const { token, account } = useAuth();
@@ -24,7 +25,7 @@ function App() {
   const homePath = useMemo(() => {
     if (!account) return "/dashboard";
     const isSuperAdmin = account.role === "admin" && !account.parentAccountId;
-    if (isSuperAdmin) return "/approvals";
+    if (isSuperAdmin) return "/super-dashboard";
     if (account.role === "admin") return "/dashboard";
     return "/jobs";
   }, [account]);
@@ -36,8 +37,8 @@ function App() {
         <main
           className={
             token
-              ? "ml-56 flex-1 bg-slate-900 min-h-screen text-slate-100"
-              : "flex-1 bg-slate-900 min-h-screen text-slate-100"
+              ? "ml-56 flex-1 bg-gray-50 min-h-screen text-gray-900"
+              : "flex-1 bg-gray-50 min-h-screen text-gray-900"
           }
         >
           <Routes>
@@ -63,6 +64,18 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={["admin"]} requireApproved={true}>
                   <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/super-dashboard"
+              element={
+                <ProtectedRoute
+                  allowedRoles={["admin"]}
+                  superAdminOnly={true}
+                  requireApproved={true}
+                >
+                  <SuperDashboard />
                 </ProtectedRoute>
               }
             />

@@ -53,6 +53,7 @@ export const Partners: React.FC = () => {
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchpartners();
     setCompanyName(account?.companyName || "");

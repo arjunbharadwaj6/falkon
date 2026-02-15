@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -23,6 +23,17 @@ export const Accounts: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [createSuccess, setCreateSuccess] = useState<string | null>(null);
+  const [createForm, setCreateForm] = useState({
+    companyName: "",
+    email: "",
+    username: "",
+    password: "",
+    confirmPassword: "",
+  });
   const [filter, setFilter] = useState<{
     search: string;
     onlyPending: boolean;
@@ -38,7 +49,7 @@ export const Accounts: React.FC = () => {
     [token],
   );
 
-  const loadAccounts = async () => {
+  const loadAccounts = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -54,11 +65,11 @@ export const Accounts: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [headers]);
 
   useEffect(() => {
     if (isSuperAdmin) loadAccounts();
-  }, [isSuperAdmin]);
+  }, [isSuperAdmin, loadAccounts]);
 
   const deleteAccount = async (id: string, email: string) => {
     if (
@@ -98,6 +109,90 @@ export const Accounts: React.FC = () => {
     return matchesSearch && matchesPending;
   });
 
+  const resetCreateForm = () => {
+    setCreateForm({
+      companyName: "",
+      email: "",
+      username: "",
+      password: "",
+      confirmPassword: "",
+    });
+    setCreateError(null);
+    setCreateSuccess(null);
+  };
+
+  const handleCreateAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isSuperAdmin) return;
+
+    setCreateError(null);
+    setCreateSuccess(null);
+
+    const { companyName, email, username, password, confirmPassword } =
+      createForm;
+
+    if (!companyName || !email || !username || !password) {
+      setCreateError("All fields are required");
+      return;
+    }
+
+    if (password.length < 8) {
+      setCreateError("Password must be at least 8 characters");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setCreateError("Passwords do not match");
+      return;
+    }
+
+    setCreateLoading(true);
+    try {
+      const signupRes = await fetch(`${API_BASE}/auth/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyName, email, username, password }),
+      });
+
+      const signupData = await signupRes.json().catch(() => ({}));
+      if (!signupRes.ok) {
+        throw new Error(
+          (signupData as { error?: string }).error ||
+            `Create failed (${signupRes.status})`,
+        );
+      }
+
+      const newAccountId = (signupData as { account?: { id?: string } })
+        ?.account?.id;
+
+      if (newAccountId) {
+        const approveRes = await fetch(`${API_BASE}/auth/approve-account`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ accountId: newAccountId }),
+        });
+
+        const approveData = await approveRes.json().catch(() => ({}));
+        if (!approveRes.ok) {
+          throw new Error(
+            (approveData as { error?: string }).error ||
+              `Auto-approval failed (${approveRes.status})`,
+          );
+        }
+      }
+
+      setCreateSuccess("Account created and approved successfully.");
+      resetCreateForm();
+      await loadAccounts();
+    } catch (e) {
+      setCreateError(
+        e instanceof Error ? e.message : "Failed to create account",
+      );
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white p-8">
       <div className="max-w-7xl mx-auto">
@@ -110,12 +205,26 @@ export const Accounts: React.FC = () => {
                 Manage and monitor all system accounts
               </p>
             </div>
-            <button
-              onClick={loadAccounts}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors shadow-sm"
-            >
-              ↻ Refresh
-            </button>
+            {isSuperAdmin && (
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    setShowCreateModal(true);
+                    setCreateError(null);
+                    setCreateSuccess(null);
+                  }}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors shadow-sm"
+                >
+                  + Create Account
+                </button>
+                <button
+                  onClick={loadAccounts}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors shadow-sm"
+                >
+                  ↻ Refresh
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Filters */}
@@ -185,7 +294,7 @@ export const Accounts: React.FC = () => {
                       Role
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                      Status
+                      Close
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                       Created
@@ -280,6 +389,158 @@ export const Accounts: React.FC = () => {
           </div>
         )}
       </div>
+
+      {isSuperAdmin && showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-sm px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden">
+            <div className="flex items-start justify-between p-6 border-b border-gray-200">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Create Account
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Super admin can create and auto-approve customer accounts.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowCreateModal(false);
+                  resetCreateForm();
+                }}
+                className="text-gray-500 hover:text-gray-700"
+                aria-label="Close"
+              >
+                Close
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateAccount} className="p-6 space-y-5">
+              {createError && (
+                <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">
+                  {createError}
+                </div>
+              )}
+              {createSuccess && (
+                <div className="rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 text-sm">
+                  ✓ {createSuccess}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 gap-4">
+                <label className="space-y-1 text-sm">
+                  <span className="font-medium text-gray-800">
+                    Company Name
+                  </span>
+                  <input
+                    value={createForm.companyName}
+                    onChange={(e) =>
+                      setCreateForm({
+                        ...createForm,
+                        companyName: e.target.value,
+                      })
+                    }
+                    placeholder="Acme Inc."
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    required
+                  />
+                </label>
+
+                <label className="space-y-1 text-sm">
+                  <span className="font-medium text-gray-800">Email</span>
+                  <input
+                    type="email"
+                    value={createForm.email}
+                    onChange={(e) =>
+                      setCreateForm({ ...createForm, email: e.target.value })
+                    }
+                    placeholder="owner@example.com"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    required
+                  />
+                </label>
+
+                <label className="space-y-1 text-sm">
+                  <span className="font-medium text-gray-800">Username</span>
+                  <input
+                    value={createForm.username}
+                    onChange={(e) =>
+                      setCreateForm({ ...createForm, username: e.target.value })
+                    }
+                    placeholder="owner"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    required
+                  />
+                </label>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <label className="space-y-1 text-sm">
+                    <span className="font-medium text-gray-800">Password</span>
+                    <input
+                      type="password"
+                      value={createForm.password}
+                      onChange={(e) =>
+                        setCreateForm({
+                          ...createForm,
+                          password: e.target.value,
+                        })
+                      }
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      minLength={8}
+                      required
+                    />
+                  </label>
+
+                  <label className="space-y-1 text-sm">
+                    <span className="font-medium text-gray-800">
+                      Confirm Password
+                    </span>
+                    <input
+                      type="password"
+                      value={createForm.confirmPassword}
+                      onChange={(e) =>
+                        setCreateForm({
+                          ...createForm,
+                          confirmPassword: e.target.value,
+                        })
+                      }
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      minLength={8}
+                      required
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <div className="text-xs text-gray-500">
+                  New accounts are approved instantly and can sign in right
+                  away.
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateModal(false);
+                      resetCreateForm();
+                    }}
+                    className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                    disabled={createLoading}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={createLoading}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {createLoading ? "Creating..." : "Create & Approve"}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

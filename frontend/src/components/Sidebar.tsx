@@ -20,6 +20,7 @@ export const Sidebar: React.FC = () => {
         ]
       : isSuperAdmin
         ? [
+            { path: "/super-dashboard", label: "Dashboard", icon: "📊" },
             { path: "/approvals", label: "Approvals", icon: "✅" },
             { path: "/accounts", label: "Accounts", icon: "📇" },
           ]
@@ -27,7 +28,7 @@ export const Sidebar: React.FC = () => {
           ? [{ path: "/profile", label: "Profile", icon: "⚙️" }]
           : account?.role === "admin"
             ? [
-                { path: "/", label: "Dashboard", icon: "📊" },
+                { path: "/dashboard", label: "Dashboard", icon: "📊" },
                 { path: "/jobs", label: "Jobs", icon: "💼" },
                 { path: "/candidates", label: "Candidates", icon: "👥" },
                 { path: "/recruiters", label: "Team Members", icon: "🧑‍💼" },
@@ -36,7 +37,7 @@ export const Sidebar: React.FC = () => {
                 { path: "/profile", label: "Profile", icon: "⚙️" },
               ]
             : [
-                { path: "/", label: "Dashboard", icon: "📊" },
+                { path: "/dashboard", label: "Dashboard", icon: "📊" },
                 { path: "/jobs", label: "Jobs", icon: "💼" },
                 { path: "/candidates", label: "Candidates", icon: "👥" },
                 { path: "/recruiters", label: "Team Members", icon: "🧑‍💼" },

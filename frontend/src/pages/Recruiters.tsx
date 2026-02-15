@@ -57,6 +57,7 @@ export const Recruiters: React.FC = () => {
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchRecruiters();
     setCompanyName(account?.companyName || "");

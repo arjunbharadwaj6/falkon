@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -130,7 +130,7 @@ export const Jobs: React.FC = () => {
     }
   };
 
-  const fetchJobs = async () => {
+  const fetchJobs = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     setError(null);
@@ -148,9 +148,9 @@ export const Jobs: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [apiHeaders, token]);
 
-  const fetchJobPositions = async () => {
+  const fetchJobPositions = useCallback(async () => {
     if (!token) return;
     try {
       const res = await fetch(`${API_BASE}/api/jobPositions`, {
@@ -164,12 +164,12 @@ export const Jobs: React.FC = () => {
     } catch (err) {
       console.error("Failed to load job titles:", err);
     }
-  };
+  }, [apiHeaders, token]);
 
   useEffect(() => {
     fetchJobs();
     fetchJobPositions();
-  }, [token]);
+  }, [fetchJobPositions, fetchJobs]);
 
   const resetForm = () => {
     setForm({
