@@ -99,8 +99,13 @@ router.post('/signup', async (req, res, next) => {
       email: email.toLowerCase(),
       username: username.toLowerCase(),
       role: 'admin',
-    // Do not send any notification emails on signup
-    res.json({ message: 'Account created successfully. Awaiting admin approval.' });
+      isApproved: false,
+      parentAccountId: superAdminId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    await db.collection(collections.accounts).doc(userRecord.uid).set(accountData);
 
     // Set custom claims (will be updated after approval)
     await auth.setCustomUserClaims(userRecord.uid, {
@@ -109,10 +114,9 @@ router.post('/signup', async (req, res, next) => {
       parentAccountId: superAdminId,
     });
 
-    // Generate approval token
+    // Generate approval token (used by approve-by-token flow); no emails are sent
     const approvalToken = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
-
     try {
       await db.collection(collections.accountApprovalTokens).add({
         accountId: userRecord.uid,
@@ -125,17 +129,8 @@ router.post('/signup', async (req, res, next) => {
       console.error('Failed to create approval token:', tokenError.message);
     }
 
-    // Send admin approval email
-    const apiUrl = process.env.API_PUBLIC_URL || `http://localhost:${process.env.PORT || 5000}`;
-    const approvalLink = `${apiUrl}/auth/approve-by-token?token=${approvalToken}`;
-    Promise.resolve()
-      .then(() => sendAdminApprovalEmail(email, username, companyName, approvalLink))
-      .catch((emailError) => {
-        console.error('Failed to send admin approval email:', emailError.message);
-      });
-
-    res.status(201).json({
-      message: 'Account created successfully! Await admin approval to access all features.',
+    return res.status(201).json({
+      message: 'Account created successfully. Await admin approval.',
       account: {
         id: userRecord.uid,
         ...accountData,
@@ -143,8 +138,11 @@ router.post('/signup', async (req, res, next) => {
     });
   } catch (error) {
     console.error('Signup error:', error);
-    // Do not send notification emails on approval
-    res.json({ message: 'Account approved successfully' });
+    next(error);
+  }
+});
+
+// Login endpoint (placeholder - client-side Firebase auth is used)
 router.post('/login', async (req, res, next) => {
   try {
     const { email, identifier, password } = req.body;
