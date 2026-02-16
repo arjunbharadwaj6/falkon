@@ -36,6 +36,11 @@ type Job = {
   id: string;
   jobCode: string;
   title: string;
+  description?: string | null;
+  clientName?: string | null;
+  location?: string | null;
+  workType?: string | null;
+  visaType?: string | null;
   jobPositionId?: string | null;
   jobPositionName?: string | null;
   status: string;
@@ -155,6 +160,13 @@ export const Candidates: React.FC = () => {
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showBestModal, setShowBestModal] = useState(false);
+  const [bestJobId, setBestJobId] = useState("");
+  const [bestLoading, setBestLoading] = useState(false);
+  const [bestError, setBestError] = useState<string | null>(null);
+  const [bestResults, setBestResults] = useState<
+    Array<{ id: string; name: string; score: number; reason: string }>
+  >([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [jobPositions, setJobPositions] = useState<JobPosition[]>([]);
   const [recruiters, setRecruiters] = useState<
@@ -193,6 +205,7 @@ export const Candidates: React.FC = () => {
     "linkedinUrl",
     "jobPositionId",
     "jobId",
+    "jobCode",
     "additionalComments",
     "createdBy",
   ];
@@ -609,6 +622,131 @@ export const Candidates: React.FC = () => {
     }
   };
 
+  const openBestModal = () => {
+    setShowBestModal(true);
+    setBestJobId("");
+    setBestResults([]);
+    setBestError(null);
+  };
+
+  const findBestCandidates = async () => {
+    const key = import.meta.env.VITE_GEMINI_API_KEY;
+    const envModel = import.meta.env.VITE_GEMINI_MODEL;
+    // Accept both bare model ids (gemini-2.5-flash) and fully-qualified names (models/gemini-2.5-flash)
+    const model = (envModel || "gemini-2.5-flash").replace(/^models\//, "");
+    if (!bestJobId) {
+      setBestError("Please select a job ID.");
+      return;
+    }
+    if (!key) {
+      setBestError("Gemini API key missing. Set VITE_GEMINI_API_KEY.");
+      return;
+    }
+
+    const matchingCandidates = candidates.filter((c) => c.jobId === bestJobId);
+    if (matchingCandidates.length === 0) {
+      setBestError("No candidates found for that job ID.");
+      return;
+    }
+
+    const jobInfo = jobs.find((j) => j.id === bestJobId);
+    const jobPositionDetails = jobPositions.find(
+      (p) => p.id === jobInfo?.jobPositionId,
+    );
+    const promptCandidates = matchingCandidates.slice(0, 30).map((c) => {
+      const experience =
+        typeof c.experience === "number" ? `${c.experience} yrs` : "Unknown";
+      return `id:${c.id} | name:${c.name} | status:${c.profileStatus} | exp:${experience} | visa:${c.visaStatus ?? "n/a"} | location:${c.location ?? "n/a"} | comments:${c.additionalComments ?? ""}`;
+    });
+
+    const prompt = `You are an ATS assistant. Rank the top 3 best-fit candidates for the job. Return raw JSON only (no markdown, no code fences) in the exact shape {"candidates":[{"id":"...","name":"...","score":0-100,"reason":"short"}]}. Consider fit against the job's description, location, visa preference, and work type.
+  Job: ${jobInfo?.title ?? "Unknown title"} (code: ${jobInfo?.jobCode ?? "n/a"}).
+  Job position: ${jobPositionDetails?.name ?? jobInfo?.jobPositionName ?? "Not provided"}.
+  Job description: ${jobPositionDetails?.description ?? jobInfo?.description ?? "Not provided"}.
+  Location: ${jobInfo?.location ?? "Not specified"}.
+  Work type: ${jobInfo?.workType ?? "Not specified"}.
+  Visa preference: ${jobInfo?.visaType ?? "Not specified"}.
+  Client: ${jobInfo?.clientName ?? "Not specified"}.
+Candidates:\n${promptCandidates.join("\n")}`;
+
+    setBestLoading(true);
+    setBestError(null);
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+          }),
+        },
+      );
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          (data as { error?: { message?: string } }).error?.message ||
+            `Gemini request failed (${res.status})`,
+        );
+      }
+
+      const text =
+        (
+          data as {
+            candidates?: Array<{
+              content?: { parts?: Array<{ text?: string }> };
+            }>;
+          }
+        ).candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+      let parsed: Array<{
+        id: string;
+        name: string;
+        score: number;
+        reason: string;
+      }> = [];
+
+      const tryParseJson = (raw: string) => {
+        const trimmed = raw.trim();
+        if (!trimmed) return null;
+        const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+        const candidateText = fenced ? fenced[1] : trimmed;
+        const firstBrace = candidateText.indexOf("{");
+        const lastBrace = candidateText.lastIndexOf("}");
+        if (firstBrace !== -1 && lastBrace > firstBrace) {
+          const slice = candidateText.slice(firstBrace, lastBrace + 1);
+          return JSON.parse(slice);
+        }
+        return JSON.parse(candidateText);
+      };
+
+      try {
+        const asJson = tryParseJson(text);
+        parsed = Array.isArray(asJson?.candidates) ? asJson.candidates : [];
+      } catch {
+        // Fallback: attempt to extract lines
+        parsed = text
+          .split("\n")
+          .slice(0, 3)
+          .map((line, idx) => ({
+            id: `rank-${idx + 1}`,
+            name: line.slice(0, 80) || `Candidate ${idx + 1}`,
+            score: 0,
+            reason: line,
+          }));
+      }
+
+      setBestResults(parsed);
+    } catch (err) {
+      setBestError(
+        err instanceof Error ? err.message : "Failed to find best candidates",
+      );
+    } finally {
+      setBestLoading(false);
+    }
+  };
+
   const handleView = (candidate: Candidate) => {
     setSelected(candidate);
     setShowViewModal(true);
@@ -733,9 +871,11 @@ export const Candidates: React.FC = () => {
     try {
       let successCount = 0;
       let errorCount = 0;
+      const invalidJobIds = new Set<string>();
 
       for (const row of csvData) {
         const payload: Record<string, unknown> = {};
+        let rowInvalid = false;
 
         // Map CSV columns to candidate fields
         for (const [csvHeader, candidateField] of Object.entries(
@@ -752,6 +892,22 @@ export const Candidates: React.FC = () => {
               candidateField === "profileStatus"
             ) {
               payload[candidateField] = value;
+            } else if (
+              candidateField === "jobId" ||
+              candidateField === "jobCode"
+            ) {
+              const jobMatch = jobs.find(
+                (job) => job.id === value || job.jobCode === value,
+              );
+              if (!jobMatch) {
+                rowInvalid = true;
+                invalidJobIds.add(value);
+                break;
+              }
+              payload.jobId = jobMatch.id;
+              if (jobMatch.jobPositionId && !payload.jobPositionId) {
+                payload.jobPositionId = jobMatch.jobPositionId;
+              }
             } else if (candidateField === "createdBy") {
               // Match recruiter by email or username
               const recruiter = recruiters.find(
@@ -766,6 +922,11 @@ export const Candidates: React.FC = () => {
               payload[candidateField] = value;
             }
           }
+        }
+
+        if (rowInvalid) {
+          errorCount++;
+          continue;
         }
 
         if (!payload.name) {
@@ -795,7 +956,13 @@ export const Candidates: React.FC = () => {
         }
       }
 
-      setError(`Import completed: ${successCount} added, ${errorCount} failed`);
+      const invalidJobNote =
+        invalidJobIds.size > 0
+          ? ` (invalid job ids: ${Array.from(invalidJobIds).join(", ")})`
+          : "";
+      setError(
+        `Import completed: ${successCount} added, ${errorCount} failed${invalidJobNote}`,
+      );
       setCsvImporting(false);
       setShowCsvModal(false);
       setCsvStep("upload");
@@ -845,6 +1012,12 @@ export const Candidates: React.FC = () => {
             onClick={() => setShowCsvModal(true)}
           >
             📤 Import CSV
+          </button>
+          <button
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-md shadow-purple-500/30"
+            onClick={openBestModal}
+          >
+            🌟 Best candidate
           </button>
           {selectedCandidates.size > 0 && (
             <button
@@ -1668,6 +1841,97 @@ export const Candidates: React.FC = () => {
               >
                 Edit
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showBestModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 px-4">
+          <div className="w-full max-w-xl rounded-lg bg-white shadow-xl overflow-hidden">
+            <div className="border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Best candidate
+                </h2>
+                <p className="text-sm text-gray-600">
+                  Pick a job to rank the top matches using Gemini.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowBestModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              {bestError && (
+                <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">
+                  {bestError}
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-800">
+                  Job ID
+                </label>
+                <select
+                  value={bestJobId}
+                  onChange={(e) => setBestJobId(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">Select a job</option>
+                  {jobs.map((job) => (
+                    <option key={job.id} value={job.id}>
+                      {job.jobCode ? `${job.jobCode} - ` : ""}
+                      {job.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowBestModal(false)}
+                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                  disabled={bestLoading}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={findBestCandidates}
+                  disabled={bestLoading}
+                  className="px-4 py-2 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm disabled:opacity-60"
+                >
+                  {bestLoading ? "Ranking..." : "Find best"}
+                </button>
+              </div>
+
+              {bestResults.length > 0 && (
+                <div className="border border-gray-200 rounded-lg divide-y divide-gray-200">
+                  {bestResults.map((r, idx) => (
+                    <div
+                      key={`${r.id}-${idx}`}
+                      className="p-4 flex items-start justify-between gap-3"
+                    >
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">
+                          #{idx + 1} {r.name}
+                        </p>
+                        <p className="text-xs text-gray-600">ID: {r.id}</p>
+                        <p className="text-xs text-gray-700 mt-1">{r.reason}</p>
+                      </div>
+                      <span className="text-xs font-semibold text-indigo-700 bg-indigo-100 rounded-full px-3 py-1">
+                        Score {Math.round(r.score ?? 0)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
