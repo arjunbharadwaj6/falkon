@@ -2,7 +2,7 @@ import express from 'express';
 import crypto from 'crypto';
 import { auth, db, collections } from '../firebase.js';
 import { authRequired } from '../middleware/auth-firebase.js';
-import { sendPasswordResetEmail, sendApprovalNotificationEmail, sendApprovedEmail, sendAdminApprovalEmail } from '../services/email.js';
+import { sendPasswordResetEmail } from '../services/email.js';
 import { formatDatesInObject } from '../utils/dateFormatter.js';
 
 const router = express.Router();
@@ -99,13 +99,8 @@ router.post('/signup', async (req, res, next) => {
       email: email.toLowerCase(),
       username: username.toLowerCase(),
       role: 'admin',
-      isApproved: false,
-      parentAccountId: superAdminId,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    await db.collection(collections.accounts).doc(userRecord.uid).set(accountData);
+    // Do not send any notification emails on signup
+    res.json({ message: 'Account created successfully. Awaiting admin approval.' });
 
     // Set custom claims (will be updated after approval)
     await auth.setCustomUserClaims(userRecord.uid, {
@@ -148,11 +143,8 @@ router.post('/signup', async (req, res, next) => {
     });
   } catch (error) {
     console.error('Signup error:', error);
-    next(error);
-  }
-});
-
-// Login endpoint - validates Firebase user and returns custom token
+    // Do not send notification emails on approval
+    res.json({ message: 'Account approved successfully' });
 router.post('/login', async (req, res, next) => {
   try {
     const { email, identifier, password } = req.body;
@@ -333,12 +325,8 @@ router.post('/approve-account', authRequired, async (req, res, next) => {
       parentAccountId: accountData.parentAccountId,
     });
 
-    // Send approval notification email
-    Promise.resolve()
-      .then(() => sendApprovedEmail(accountData.email, accountData.username))
-      .catch((emailError) => {
-        console.error('Failed to send approval email:', emailError.message);
-      });
+    // Do not send notification emails on approval
+    res.json({ message: 'Account approved successfully' });
 
     res.json({ message: 'Account approved successfully' });
   } catch (error) {
