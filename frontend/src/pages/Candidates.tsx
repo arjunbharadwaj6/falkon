@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
 import Papa from "papaparse";
+import { countries } from "../constants/countries";
 
 type Candidate = {
   id: string;
@@ -20,6 +21,7 @@ type Candidate = {
   createdByUsername?: string | null;
   createdByEmail?: string | null;
   additionalComments?: string | null;
+  country?: string | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -39,6 +41,7 @@ type Job = {
   description?: string | null;
   clientName?: string | null;
   location?: string | null;
+  country?: string | null;
   workType?: string | null;
   visaType?: string | null;
   jobPositionId?: string | null;
@@ -147,6 +150,7 @@ export const Candidates: React.FC = () => {
     email: "",
     phone: "",
     location: "",
+    country: "",
     visaStatus: "",
     experience: "",
     profileStatus: "submitted",
@@ -199,6 +203,7 @@ export const Candidates: React.FC = () => {
     "email",
     "phone",
     "location",
+    "country",
     "visaStatus",
     "experience",
     "profileStatus",
@@ -337,6 +342,7 @@ export const Candidates: React.FC = () => {
       email: "",
       phone: "",
       location: "",
+      country: "",
       visaStatus: "",
       experience: "",
       profileStatus: "submitted",
@@ -364,6 +370,7 @@ export const Candidates: React.FC = () => {
       email: form.email.trim(),
       phone: form.phone.trim(),
       location: form.location.trim(),
+      country: form.country.trim(),
       visaStatus: form.visaStatus,
       experience: form.experience.trim(),
       profileStatus,
@@ -424,6 +431,7 @@ export const Candidates: React.FC = () => {
     setIfPresent("email", trimmed.email);
     setIfPresent("phone", trimmed.phone);
     setIfPresent("location", trimmed.location);
+    setIfPresent("country", trimmed.country);
     setIfPresent("visaStatus", trimmed.visaStatus);
     if (experienceValue !== null) setIfPresent("experience", experienceValue);
     setIfPresent("linkedinUrl", trimmed.linkedinUrl);
@@ -517,6 +525,7 @@ export const Candidates: React.FC = () => {
       email: candidate.email || "",
       phone: candidate.phone || "",
       location: candidate.location || "",
+      country: candidate.country || "",
       visaStatus: candidate.visaStatus || "",
       experience: candidate.experience?.toString() || "",
       profileStatus: candidate.profileStatus,
@@ -656,7 +665,7 @@ export const Candidates: React.FC = () => {
     const promptCandidates = matchingCandidates.slice(0, 30).map((c) => {
       const experience =
         typeof c.experience === "number" ? `${c.experience} yrs` : "Unknown";
-      return `id:${c.id} | name:${c.name} | status:${c.profileStatus} | exp:${experience} | visa:${c.visaStatus ?? "n/a"} | location:${c.location ?? "n/a"} | comments:${c.additionalComments ?? ""}`;
+      return `id:${c.id} | name:${c.name} | status:${c.profileStatus} | exp:${experience} | visa:${c.visaStatus ?? "n/a"} | location:${c.location ?? "n/a"} | country:${c.country ?? "n/a"} | comments:${c.additionalComments ?? ""}`;
     });
 
     const prompt = `You are an ATS assistant. Rank the top 3 best-fit candidates for the job. Return raw JSON only (no markdown, no code fences) in the exact shape {"candidates":[{"id":"...","name":"...","score":0-100,"reason":"short"}]}. Consider fit against the job's description, location, visa preference, and work type.
@@ -667,6 +676,7 @@ export const Candidates: React.FC = () => {
   Work type: ${jobInfo?.workType ?? "Not specified"}.
   Visa preference: ${jobInfo?.visaType ?? "Not specified"}.
   Client: ${jobInfo?.clientName ?? "Not specified"}.
+    Country: ${jobInfo?.country ?? "Not specified"}.
 Candidates:\n${promptCandidates.join("\n")}`;
 
     setBestLoading(true);
@@ -881,17 +891,25 @@ Candidates:\n${promptCandidates.join("\n")}`;
         for (const [csvHeader, candidateField] of Object.entries(
           fieldMapping,
         )) {
-          if (candidateField && row[csvHeader]) {
-            const value = row[csvHeader].trim();
+          const rawValue = row[csvHeader];
+          if (candidateField && rawValue !== undefined && rawValue !== null) {
+            const value = String(rawValue).trim();
 
             // Type conversion based on field
             if (candidateField === "experience") {
               payload[candidateField] = Number(value);
-            } else if (
-              candidateField === "visaStatus" ||
-              candidateField === "profileStatus"
-            ) {
+            } else if (candidateField === "visaStatus") {
               payload[candidateField] = value;
+            } else if (candidateField === "profileStatus") {
+              const normalized = value.toLowerCase();
+              const matched = profileStatusOptions.find(
+                (opt) =>
+                  opt.value.toLowerCase() === normalized ||
+                  opt.label.toLowerCase() === normalized,
+              );
+              if (matched) {
+                payload.profileStatus = matched.value;
+              }
             } else if (
               candidateField === "jobId" ||
               candidateField === "jobCode"
@@ -908,6 +926,8 @@ Candidates:\n${promptCandidates.join("\n")}`;
               if (jobMatch.jobPositionId && !payload.jobPositionId) {
                 payload.jobPositionId = jobMatch.jobPositionId;
               }
+            } else if (candidateField === "country") {
+              payload.country = value;
             } else if (candidateField === "createdBy") {
               // Match recruiter by email or username
               const recruiter = recruiters.find(
@@ -1468,6 +1488,24 @@ Candidates:\n${promptCandidates.join("\n")}`;
                 </label>
 
                 <label className="flex flex-col text-sm text-gray-800 gap-1">
+                  Country
+                  <select
+                    className="border border-gray-300 bg-white text-gray-900 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={form.country}
+                    onChange={(e) =>
+                      setForm({ ...form, country: e.target.value })
+                    }
+                  >
+                    <option value="">-- Select --</option>
+                    {countries.map((country) => (
+                      <option key={country} value={country}>
+                        {country}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="flex flex-col text-sm text-gray-800 gap-1">
                   Visa Status
                   <select
                     className="border border-gray-300 bg-white text-gray-900 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1787,6 +1825,10 @@ Candidates:\n${promptCandidates.join("\n")}`;
                       selected.jobId
                     : "-"}
                 </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">Country:</span>
+                <span>{selected.country || "-"}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="font-semibold">Job Title:</span>

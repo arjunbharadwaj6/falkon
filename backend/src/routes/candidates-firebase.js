@@ -16,7 +16,7 @@ const tenantAccountId = (req) => req.user.tenantAccountId;
 // Create candidate
 router.post('/', async (req, res, next) => {
   try {
-    const { name, email, phone, location, visaStatus, experience, profileStatus = 'submitted', linkedinUrl, resumeUrl, jobId, jobPositionId } = req.body;
+    const { name, email, phone, location, country, visaStatus, experience, profileStatus = 'submitted', linkedinUrl, resumeUrl, jobId, jobPositionId, additionalComments } = req.body;
     const accountId = tenantAccountId(req);
     const createdBy = req.user.accountId;
     const isAdminUser = isAdmin(req);
@@ -48,6 +48,7 @@ router.post('/', async (req, res, next) => {
       email: email || null,
       phone: phone || null,
       location: location || null,
+      country: country || null,
       visaStatus: visaStatus || null,
       experience: experience ?? null,
       profileStatus: finalProfileStatus,
@@ -55,6 +56,7 @@ router.post('/', async (req, res, next) => {
       resumeUrl: resumeUrl || null,
       jobId: jobId || null,
       jobPositionId: jobPositionId || null,
+      additionalComments: additionalComments ?? null,
       accountId,
       createdBy,
       createdByUsername: creatorData.username || null,
@@ -83,7 +85,7 @@ router.put('/:id', async (req, res, next) => {
     const accountId = tenantAccountId(req);
     const isAdminUser = isAdmin(req);
     const onlySelf = !isAdminUser;
-    const { name, email, phone, location, visaStatus, experience, profileStatus, linkedinUrl, resumeUrl, jobId, jobPositionId } = req.body;
+    const { name, email, phone, location, country, visaStatus, experience, profileStatus, linkedinUrl, resumeUrl, jobId, jobPositionId, additionalComments } = req.body;
 
     // Get candidate document
     const candidateRef = db.collection(collections.candidates).doc(id);
@@ -110,6 +112,7 @@ router.put('/:id', async (req, res, next) => {
     if (email !== undefined) updates.email = email;
     if (phone !== undefined) updates.phone = phone;
     if (location !== undefined) updates.location = location;
+    if (country !== undefined) updates.country = country;
     if (visaStatus !== undefined) updates.visaStatus = visaStatus;
     
     if (experience !== undefined) {
@@ -133,6 +136,7 @@ router.put('/:id', async (req, res, next) => {
     if (resumeUrl !== undefined) updates.resumeUrl = resumeUrl;
     if (jobId !== undefined) updates.jobId = jobId || null;
     if (jobPositionId !== undefined) updates.jobPositionId = jobPositionId || null;
+    if (additionalComments !== undefined) updates.additionalComments = additionalComments;
 
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ error: 'No fields provided to update' });

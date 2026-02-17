@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
+import { countries } from "../constants/countries";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -34,6 +35,7 @@ type Job = {
   descriptionPdfUrl?: string | null;
   clientName?: string | null;
   location?: string | null;
+  country?: string | null;
   workType: string;
   visaType?: string | null;
   positions: number;
@@ -96,6 +98,7 @@ export const Jobs: React.FC = () => {
     description: "",
     clientName: "",
     location: "",
+    country: "",
     workType: "hybrid",
     visaType: "",
     positions: "1",
@@ -177,6 +180,7 @@ export const Jobs: React.FC = () => {
       description: "",
       clientName: "",
       location: "",
+      country: "",
       workType: "hybrid",
       visaType: "",
       positions: "1",
@@ -226,6 +230,7 @@ export const Jobs: React.FC = () => {
       description: form.description.trim() || null,
       clientName: form.clientName.trim() || null,
       location: form.location.trim() || null,
+      country: form.country.trim() || null,
       workType: form.workType,
       visaType: form.visaType.trim() || null,
       positions: positionsNumber,
@@ -521,6 +526,12 @@ export const Jobs: React.FC = () => {
               <span className="font-medium">{job.location}</span>
             </div>
           )}
+          {job.country && (
+            <div className="flex items-center gap-2">
+              <span className="text-base">🌎</span>
+              <span className="font-medium">{job.country}</span>
+            </div>
+          )}
         </div>
         <button
           onClick={() => {
@@ -659,6 +670,14 @@ export const Jobs: React.FC = () => {
                 </p>
                 <p className="text-base font-medium text-gray-900">
                   {job.location || "Not specified"}
+                </p>
+              </div>
+              <div className="space-y-3">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                  Country
+                </p>
+                <p className="text-base font-medium text-gray-900">
+                  {job.country || "Not specified"}
                 </p>
               </div>
               <div className="space-y-3">
@@ -821,6 +840,7 @@ export const Jobs: React.FC = () => {
                       description: job.description || "",
                       clientName: job.clientName || "",
                       location: job.location || "",
+                      country: job.country || "",
                       workType: job.workType,
                       visaType: job.visaType || "",
                       positions: String(job.positions),
@@ -1103,6 +1123,24 @@ export const Jobs: React.FC = () => {
                     }
                     placeholder="City, State or Remote"
                   />
+                </label>
+
+                <label className="flex flex-col gap-1 text-sm text-gray-700">
+                  Country
+                  <select
+                    className="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    value={form.country}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, country: e.target.value }))
+                    }
+                  >
+                    <option value="">-- Select --</option>
+                    {countries.map((country) => (
+                      <option key={country} value={country}>
+                        {country}
+                      </option>
+                    ))}
+                  </select>
                 </label>
 
                 <label className="flex flex-col gap-1 text-sm text-gray-700">
